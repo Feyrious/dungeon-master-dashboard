@@ -1,0 +1,78 @@
+@page "/systems/{SystemId}"
+@page "/systems/{SystemId}/{ToolId}"
+@layout BareLayout
+@rendermode InteractiveServer
+@inject ConfiguredGameSystems GameSystems
+@inject NavigationManager NavigationManager
+
+@if (config is not null)
+{
+    var system = config.System;
+    <PageTitle>@(tool is null ? system.Name : $"{tool.Name} · {system.Name}")</PageTitle>
+
+    <SystemShell Config="config">
+        @if (tool is null)
+        {
+            <header class="system-header">
+                <h1>@system.Name</h1>
+                <p>@system.Tagline</p>
+            </header>
+            @if (config.Tools.Count == 0)
+            {
+                <p class="system-empty">No tools are shown for this game system. Choose which tools to show by editing the system on the overview.</p>
+            }
+            else
+            {
+                <div class="tool-grid">
+                    @foreach (var item in config.Tools)
+                    {
+                        <a class="tool-card" href="@($"systems/{system.Id}/{item.Id}")">
+                            <span class="tool-card-icon" aria-hidden="true">@item.Icon</span>
+                            <span class="tool-card-name">@item.Name</span>
+                            <span class="tool-card-description">@item.Description</span>
+                        </a>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <header class="system-header">
+                <h1><span aria-hidden="true">@tool.Icon</span> @tool.Name</h1>
+                <p>@tool.Description</p>
+            </header>
+            <DynamicComponent @key="tool.Id" Type="tool.Component" Parameters="toolParameters" />
+        }
+    </SystemShell>
+}
+
+@code {
+    private ConfiguredSystem? config;
+    private ToolDefinition? tool;
+    private Dictionary<string, object> toolParameters = [];
+
+    [Parameter]
+    public string SystemId { get; set; } = "";
+
+    [Parameter]
+    public string? ToolId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Keep showing the current system while switching tools, to avoid a flash.
+        var loaded = await GameSystems.FindAsync(SystemId);
+        var loadedTool = loaded is not null && ToolId is not null ? loaded.FindTool(ToolId) : null;
+
+        // Unknown system, or a tool that isn't shown for this system.
+        if (loaded is null || (ToolId is not null && loadedTool is null))
+        {
+            config = null;
+            NavigationManager.NotFound();
+            return;
+        }
+
+        config = loaded;
+        tool = loadedTool;
+        toolParameters = new() { [nameof(Tools.ToolBase.System)] = loaded.System };
+    }
+}

@@ -1,0 +1,88 @@
+@* Brightness, colors and fonts of a tile's theme. Changes are made on Theme directly and
+   reported through OnChanged so the editor can update its preview. *@
+
+@if (Presets.Count > 0)
+{
+    <div class="mb-3">
+        <label class="form-label" for="settings-theme-preset">Copy theme from</label>
+        <select id="settings-theme-preset" class="form-select" @onchange="CopyPresetAsync">
+            <option value="">Choose a game system or world…</option>
+            @for (var i = 0; i < Presets.Count; i++)
+            {
+                <option value="@i">@Presets[i].Label</option>
+            }
+        </select>
+    </div>
+}
+<div class="btn-group mb-3" role="group" aria-label="Theme brightness">
+    <input type="radio" class="btn-check" name="settings-brightness" id="settings-dark" checked="@Theme.IsDark" @onchange="() => SetAsync(() => Theme.IsDark = true)" />
+    <label class="btn btn-outline-secondary btn-sm" for="settings-dark">Dark</label>
+    <input type="radio" class="btn-check" name="settings-brightness" id="settings-light" checked="@(!Theme.IsDark)" @onchange="() => SetAsync(() => Theme.IsDark = false)" />
+    <label class="btn btn-outline-secondary btn-sm" for="settings-light">Light</label>
+</div>
+<div class="settings-colors">
+    @foreach (var color in Colors)
+    {
+        <label class="settings-color">
+            <input type="color" value="@color.Get()" @oninput="e => SetAsync(() => color.Set((string)e.Value!))" />
+            <span>@color.Label</span>
+        </label>
+    }
+</div>
+<div class="row g-2 mt-2">
+    <div class="col-sm-6">
+        <label class="form-label" for="settings-heading-font">Heading font</label>
+        <select id="settings-heading-font" class="form-select" value="@Theme.HeadingFont" @onchange="e => SetAsync(() => Theme.HeadingFont = (string)e.Value!)">
+            @foreach (var font in FontOptions.Including(Theme.HeadingFont))
+            {
+                <option value="@font.Css" style="font-family: @font.Css">@font.Label</option>
+            }
+        </select>
+    </div>
+    <div class="col-sm-6">
+        <label class="form-label" for="settings-body-font">Text font</label>
+        <select id="settings-body-font" class="form-select" value="@Theme.BodyFont" @onchange="e => SetAsync(() => Theme.BodyFont = (string)e.Value!)">
+            @foreach (var font in FontOptions.Including(Theme.BodyFont))
+            {
+                <option value="@font.Css" style="font-family: @font.Css">@font.Label</option>
+            }
+        </select>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ThemeDraft Theme { get; set; } = default!;
+
+    // Themes that can be copied as a starting point.
+    [Parameter]
+    public IReadOnlyList<ThemePreset> Presets { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private IEnumerable<(string Label, Func<string> Get, Action<string> Set)> Colors =>
+    [
+        ("Background", () => Theme.Background, v => Theme.Background = v),
+        ("Panels", () => Theme.Surface, v => Theme.Surface = v),
+        ("Text", () => Theme.Text, v => Theme.Text = v),
+        ("Muted text", () => Theme.MutedText, v => Theme.MutedText = v),
+        ("Accent", () => Theme.Accent, v => Theme.Accent = v),
+        ("Text on accent", () => Theme.AccentText, v => Theme.AccentText = v),
+        ("Borders", () => Theme.Border, v => Theme.Border = v),
+    ];
+
+    private Task SetAsync(Action change)
+    {
+        change();
+        return OnChanged.InvokeAsync();
+    }
+
+    private async Task CopyPresetAsync(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value as string, out var index) && index >= 0 && index < Presets.Count)
+        {
+            await SetAsync(() => Theme.CopyFrom(Presets[index].Theme));
+        }
+    }
+}

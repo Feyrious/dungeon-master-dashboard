@@ -1,0 +1,178 @@
+@using DungeonMasterDashboard.Contracts
+@using DungeonMasterDashboard.Contracts.Worlds
+@using DungeonMasterDashboard.Web.Api
+@inherits SettingsDialogBase
+@inject ApiClient Api
+
+@* Adds or edits a world: text, wiki link, tile image and theme. *@
+
+<NavigationLock ConfirmExternalNavigation="IsDirty" OnBeforeInternalNavigation="ConfirmNavigationAsync" />
+
+<SettingsDialog Title="@(world is null ? "Add world" : "Edit world")" OnRequestClose="RequestCloseAsync" OnEscape="OnEscapeAsync">
+    <EditForm Model="draft" OnValidSubmit="SaveAsync" class="settings-dialog-form">
+        <DataAnnotationsValidator />
+        <div class="settings-dialog-body">
+            <div class="settings-sections">
+                <section class="settings-section">
+                    <h3>Details</h3>
+                    <div class="mb-3">
+                        <label class="form-label" for="world-name">Name</label>
+                        @* Plain inputs so the preview updates while typing. *@
+                        <input id="world-name" class="form-control" @bind="draft.Name" @bind:event="oninput"
+                               maxlength="@SettingsLimits.NameMaxLength" placeholder="e.g. Curse of Strahd" />
+                        <ValidationMessage For="() => draft.Name" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="world-tagline">Tagline</label>
+                        <input id="world-tagline" class="form-control" @bind="draft.Tagline" @bind:event="oninput"
+                               maxlength="@SettingsLimits.TaglineMaxLength" />
+                        <ValidationMessage For="() => draft.Tagline" />
+                    </div>
+                    <div>
+                        <label class="form-label" for="world-label">Label</label>
+                        <input id="world-label" class="form-control" @bind="draft.Label" @bind:event="oninput"
+                               maxlength="@SettingsLimits.LabelMaxLength" list="world-label-suggestions" placeholder="e.g. the game system" />
+                        <datalist id="world-label-suggestions">
+                            @foreach (var label in Labels)
+                            {
+                                <option value="@label"></option>
+                            }
+                        </datalist>
+                        <div class="form-text">Small text shown above the name.</div>
+                        <ValidationMessage For="() => draft.Label" />
+                    </div>
+                </section>
+
+                <section class="settings-section">
+                    <h3>Wiki link</h3>
+                    <div class="mb-3">
+                        <label class="form-label" for="world-software">Wiki software</label>
+                        <select id="world-software" class="form-select" value="@draft.WikiSoftware" @onchange="e => draft.WikiSoftware = (string)e.Value!">
+                            @foreach (var software in WikiSoftware.All)
+                            {
+                                <option value="@software.Id">@software.Name</option>
+                            }
+                        </select>
+                        <div class="form-text">Only changes the link text on the tile; any wiki or website works.</div>
+                    </div>
+                    <label class="form-label" for="world-url">Address</label>
+                    <div class="input-group">
+                        <input id="world-url" type="url" class="form-control" @bind="draft.Url" @bind:event="oninput"
+                               maxlength="@SettingsLimits.UrlMaxLength" placeholder="https://" />
+                        @if (SettingsLimits.IsWebAddress(draft.Url.Trim()))
+                        {
+                            <a class="btn btn-outline-secondary" href="@draft.Url.Trim()" target="_blank" rel="noopener noreferrer">Test link ↗</a>
+                        }
+                    </div>
+                    <div class="form-text">Opens in a new tab. Without an address the tile isn't clickable.</div>
+                    <ValidationMessage For="() => draft.Url" />
+                </section>
+
+                <section class="settings-section">
+                    <h3>Tile image</h3>
+                    <TileImageEditor @ref="ImageEditor" PreviewSelector=".settings-preview" HasUploadedImage="world?.ImageUpdatedAt is not null"
+                                     @bind-Value="ImageChange" CroppingChanged="value => Cropping = value" />
+                </section>
+
+                <section class="settings-section">
+                    <h3>Theme</h3>
+                    <ThemeEditor Theme="draft.Theme" Presets="Presets" OnChanged="Refresh" />
+                </section>
+            </div>
+
+            <aside class="settings-preview">
+                <span class="settings-preview-label">Preview</span>
+                <SystemTile Theme="draft.Theme.ToTheme()"
+                            Name="@(string.IsNullOrWhiteSpace(draft.Name) ? "New world" : draft.Name)"
+                            Tagline="@draft.Tagline"
+                            Label="@(string.IsNullOrWhiteSpace(draft.Label) ? null : draft.Label)"
+                            Meta="@PreviewLinkText"
+                            ImageUrl="@PreviewImageUrl" />
+                <ContrastChecks Theme="draft.Theme.ToTheme()" MetaLabel="Link" />
+            </aside>
+        </div>
+
+        <SettingsFooter Error="@Error" Busy="Busy" SaveDisabled="Cropping" SaveLabel="@(world is null ? "Add world" : "Save")" OnCancel="RequestCloseAsync">
+            @if (world is not null)
+            {
+                <ConfirmButton Label="Delete world" Question="Delete this world tile? The wiki itself isn't affected."
+                               ConfirmLabel="Delete" Disabled="Busy" OnConfirm="DeleteAsync" />
+            }
+        </SettingsFooter>
+    </EditForm>
+</SettingsDialog>
+
+@code {
+    private WorldDto? world;
+    private WorldDraft draft = new();
+
+    // The world to edit, or null to add a new one.
+    [Parameter]
+    public WorldDto? World { get; set; }
+
+    // Suggestions for the label, e.g. the game system names.
+    [Parameter]
+    public IReadOnlyList<string> Labels { get; set; } = [];
+
+    private string PreviewImageUrl => (world, ImageChange) switch
+    {
+        (null, _) => "img/tiles/world.svg",
+        (_, TileImageChange.Remove) => WorldTiles.ImageUrl(world with { ImageUpdatedAt = null }),
+        _ => WorldTiles.ImageUrl(world),
+    };
+
+    private string PreviewLinkText => WorldTiles.LinkText(new WorldDto
+    {
+        Name = draft.Name,
+        Url = SettingsLimits.IsWebAddress(draft.Url.Trim()) ? draft.Url : null,
+        WikiSoftware = draft.WikiSoftware,
+        Theme = draft.Theme.ToTheme().ToDto(),
+    });
+
+    protected override void OnInitialized()
+    {
+        world = World;
+        draft = World is null ? WorldDraft.New() : WorldDraft.From(World);
+        MarkSaved();
+    }
+
+    protected override string Snapshot() => draft.Snapshot();
+
+    private async Task SaveAsync()
+    {
+        var saved = await RunAsync("save", async () =>
+        {
+            if (world is null)
+            {
+                // Remembered right away, so a retry after a failed image upload doesn't add the world twice.
+                world = await Api.CreateWorldAsync(draft.ToDto());
+            }
+            else
+            {
+                await Api.UpdateWorldAsync(world.Id, draft.ToDto());
+            }
+
+            if (ImageChange is TileImageChange.Upload upload)
+            {
+                await Api.UploadWorldImageAsync(world.Id, upload.Data, upload.ContentType);
+            }
+            else if (ImageChange is TileImageChange.Remove)
+            {
+                await Api.DeleteWorldImageAsync(world.Id);
+            }
+        });
+
+        if (saved)
+        {
+            await SavedAndCloseAsync();
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (world is not null && await RunAsync("delete", () => Api.DeleteWorldAsync(world.Id)))
+        {
+            await SavedAndCloseAsync();
+        }
+    }
+}

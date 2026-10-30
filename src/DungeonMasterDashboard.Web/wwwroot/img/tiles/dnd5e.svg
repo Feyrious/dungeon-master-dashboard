@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="bg" cx="0.5" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#5c1d12"/>
+      <stop offset="0.5" stop-color="#2a120c"/>
+      <stop offset="1" stop-color="#140c09"/>
+    </radialGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#ff6a2b" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#ff6a2b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="240" fill="url(#bg)"/>
+  <circle cx="200" cy="92" r="105" fill="url(#glow)"/>
+  <g stroke="#f2c98a" stroke-width="2" stroke-linejoin="round">
+    <path d="M200 22 L262 58 L262 130 L200 166 L138 130 L138 58 Z" fill="#6e1a14"/>
+    <path d="M200 22 L262 58 L200 52 Z" fill="#8f2419"/>
+    <path d="M200 22 L138 58 L200 52 Z" fill="#7d1f16"/>
+    <path d="M138 58 L200 52 L158 122 Z" fill="#6a1912"/>
+    <path d="M262 58 L200 52 L242 122 Z" fill="#81211a"/>
+    <path d="M138 58 L158 122 L138 130 Z" fill="#541410"/>
+    <path d="M262 58 L242 122 L262 130 Z" fill="#651812"/>
+    <path d="M138 130 L158 122 L200 166 Z" fill="#4a120e"/>
+    <path d="M262 130 L242 122 L200 166 Z" fill="#5a1611"/>
+    <path d="M158 122 L242 122 L200 166 Z" fill="#701b14"/>
+    <path d="M200 52 L242 122 L158 122 Z" fill="#b2321f"/>
+  </g>
+  <text x="200" y="105" text-anchor="middle" font-family="Georgia, serif" font-size="26" font-weight="700" fill="#f8dfb2">20</text>
+  <g fill="#ffb15a">
+    <circle cx="96" cy="70" r="1.8" opacity="0.8"/><circle cx="310" cy="50" r="1.5" opacity="0.7"/>
+    <circle cx="330" cy="120" r="2" opacity="0.6"/><circle cx="70" cy="140" r="1.4" opacity="0.6"/>
+    <circle cx="120" cy="30" r="1.2" opacity="0.7"/><circle cx="285" cy="22" r="1.1" opacity="0.7"/>
+    <circle cx="350" cy="90" r="1.2" opacity="0.5"/><circle cx="50" cy="100" r="1" opacity="0.5"/>
+  </g>
+</svg>

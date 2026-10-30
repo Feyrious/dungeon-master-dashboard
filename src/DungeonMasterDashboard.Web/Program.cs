@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using DungeonMasterDashboard.Web;
 using DungeonMasterDashboard.Web.Api;
 using DungeonMasterDashboard.Web.Auth;
 using DungeonMasterDashboard.Web.Components;
 using DungeonMasterDashboard.Web.Components.Account;
 using DungeonMasterDashboard.Web.Data;
+using DungeonMasterDashboard.Web.GameSystems;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +54,9 @@ if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath
         .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 }
 
+builder.Services.AddSingleton(GameSystemCatalog.Default);
+builder.Services.AddSingleton<TileImages>();
+builder.Services.AddScoped<ConfiguredGameSystems>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<ApiTokenService>();
 builder.Services.AddHttpClient<ApiClient>(client =>
@@ -91,5 +96,7 @@ app.MapRazorComponents<App>()
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+
+app.MapImageEndpoints();
 
 app.Run();

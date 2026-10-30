@@ -6,7 +6,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-DungeonMasterDashboard_Web-65138ba6-2cbe-47c1-9456-5cc769430c0b</UserSecretsId>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <!-- Normally inferred from .razor files during restore. The Dockerfile restores with only
+         this file copied, which left blazor.web.js out of the published app. -->
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DungeonMasterDashboard.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.14" />
@@ -15,6 +22,10 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13" PrivateAssets="all" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.13" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DungeonMasterDashboard.Contracts\DungeonMasterDashboard.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

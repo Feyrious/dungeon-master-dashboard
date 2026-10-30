@@ -57,7 +57,10 @@ else
         var isTwoFactorEnabled = await UserManager.GetTwoFactorEnabledAsync(user);
         if (!isTwoFactorEnabled)
         {
-            throw new InvalidOperationException("Cannot generate recovery codes for user because they do not have 2FA enabled.");
+            // Reachable by typing the address; send the user back instead of failing with an error.
+            RedirectManager.RedirectToWithStatus(
+                "Account/Manage/TwoFactorAuthentication", "Error: Two-factor authentication isn't enabled.", HttpContext);
+            return;
         }
     }
 

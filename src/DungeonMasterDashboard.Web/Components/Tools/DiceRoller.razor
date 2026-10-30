@@ -1,0 +1,13 @@
+@inherits ToolBase
+
+<ToolPlaceholder>Roll any dice expression used in @System.Name.</ToolPlaceholder>
+
+@code {
+    public static ToolDefinition Definition { get; } = new(
+        Id: "dice",
+        Name: "Dice Roller",
+        Description: "Roll dice and keep a short history of results.",
+        Icon: "🎲",
+        Component: typeof(DiceRoller),
+        AvailableIn: ToolAvailability.AllSystems);
+}
