@@ -1,0 +1,51 @@
+name: dungeon-master-dashboard
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: src/DungeonMasterDashboard.Web/Dockerfile
+    restart: unless-stopped
+    environment:
+      # TLS ends at Cloudflare; trust X-Forwarded-Proto/For so cookies and redirects use https.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ConnectionStrings__DefaultConnection: "DataSource=/app/data/app.db;Cache=Shared"
+      DataProtection__KeysPath: /app/data/keys
+      Api__BaseUrl: http://api:8080
+      Auth__ApiToken__SigningKey: ${API_SIGNING_KEY:?Set API_SIGNING_KEY in .env}
+    env_file:
+      - path: users.env
+        required: false
+    volumes:
+      - web-data:/app/data
+    # Bound to localhost only: reachable by cloudflared on this host, not from the LAN.
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:8080"
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: .
+      dockerfile: src/DungeonMasterDashboard.Api/Dockerfile
+    restart: unless-stopped
+    environment:
+      Auth__ApiToken__SigningKey: ${API_SIGNING_KEY:?Set API_SIGNING_KEY in .env}
+    # No published ports: only the web container can reach the API.
+
+  # Optional: run the Cloudflare Tunnel connector here instead of on the host.
+  # Start with `docker compose --profile tunnel up -d` and point the tunnel's
+  # public hostname at http://web:8080.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: [tunnel]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      # Not marked required: compose validates every service, even ones whose profile is off.
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - web
+
+volumes:
+  web-data:
