@@ -54,6 +54,7 @@ if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath
 }
 
 builder.Services.AddSingleton(GameSystemCatalog.Default);
+builder.Services.AddSingleton<TileImages>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<ApiTokenService>();
 builder.Services.AddHttpClient<ApiClient>(client =>
@@ -93,5 +94,7 @@ app.MapRazorComponents<App>()
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+
+app.MapTileImages();
 
 app.Run();

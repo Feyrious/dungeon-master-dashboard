@@ -13,7 +13,7 @@ public static class TailsOfEquestria
             Background: "#fff5fa",
             Surface: "#ffffff",
             Text: "#4a3557",
-            MutedText: "#8a7398",
+            MutedText: "#73598a",
             Accent: "#d9579d",
             AccentText: "#ffffff",
             Border: "#f3d3e6",

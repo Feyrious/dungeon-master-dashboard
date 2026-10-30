@@ -1,6 +1,7 @@
 @page "/systems"
 @inject GameSystemCatalog Catalog
 @inject IConfiguration Configuration
+@inject TileImages TileImages
 
 <PageTitle>Dungeon Master Dashboard</PageTitle>
 
@@ -18,7 +19,7 @@
                     var systemName = Catalog.FindSystem(world.SystemId)?.Name;
                     @if (string.IsNullOrWhiteSpace(url))
                     {
-                        <div class="system-tile system-tile-disabled" style="@world.Theme.ToCssVariables()">
+                        <div class="@TileClass(world.Theme, "system-tile-disabled")" style="@TileStyle(world.Theme, world.Id)">
                             <span class="system-tile-label">@systemName</span>
                             <span class="system-tile-name">@world.Name</span>
                             <span class="system-tile-tagline">@world.Tagline</span>
@@ -27,7 +28,7 @@
                     }
                     else
                     {
-                        <a class="system-tile" href="@url" target="_blank" rel="noopener noreferrer" style="@world.Theme.ToCssVariables()">
+                        <a class="@TileClass(world.Theme)" href="@url" target="_blank" rel="noopener noreferrer" style="@TileStyle(world.Theme, world.Id)">
                             <span class="system-tile-label">@systemName</span>
                             <span class="system-tile-name">@world.Name</span>
                             <span class="system-tile-tagline">@world.Tagline</span>
@@ -45,7 +46,7 @@
             @foreach (var system in Catalog.Systems)
             {
                 var toolCount = Catalog.ToolsFor(system).Count;
-                <a class="system-tile" href="systems/@system.Id" style="@system.Theme.ToCssVariables()">
+                <a class="@TileClass(system.Theme)" href="systems/@system.Id" style="@TileStyle(system.Theme, system.Id)">
                     <span class="system-tile-name">@system.Name</span>
                     <span class="system-tile-tagline">@system.Tagline</span>
                     <span class="system-tile-meta">@toolCount @(toolCount == 1 ? "tool" : "tools")</span>
@@ -54,3 +55,11 @@
         </div>
     </section>
 </div>
+
+@code {
+    private static string TileClass(GameSystemTheme theme, string? extra = null) =>
+        string.Join(' ', new[] { "system-tile", theme.IsDark ? null : "system-tile-light", extra }.Where(c => c is not null));
+
+    private string TileStyle(GameSystemTheme theme, string tileId) =>
+        $"{theme.ToCssVariables()}--tile-image:url('{TileImages.UrlFor(tileId)}');";
+}

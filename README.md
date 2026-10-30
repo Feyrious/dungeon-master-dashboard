@@ -34,12 +34,17 @@ belong to several systems and receives the system it was opened from, so it can 
   description, icon and `AvailableIn` (`ToolAvailability.AllSystems` or
   `ToolAvailability.Only(...)`). Add the `Definition` to the `tools` list in the catalog.
   It appears at `/systems/{system}/{tool}`.
-
 - **Add a world:** copy a file in `GameSystems/Worlds/`, give it a new id, name, tagline,
   game system and theme, and add its `Definition` to the `worlds` list in the catalog.
   Its address goes in `worlds.env` as `Worlds__{id}__Url=` (see `worlds.env.example`).
 
 The catalog checks on startup that ids are unique and only refer to existing systems.
+
+Each world and game system tile has an original illustration in
+`src/DungeonMasterDashboard.Web/wwwroot/img/tiles/{id}.svg` (add one for a new tile). To use
+your own image instead, e.g. cover art from a book you own, drop it into `tile-images/` named
+after the tile's id (see `tile-images/README.md`). Those images are git-ignored and only
+served to signed-in users.
 
 ## Running with Docker
 

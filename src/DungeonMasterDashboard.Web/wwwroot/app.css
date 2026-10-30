@@ -143,21 +143,39 @@ h1:focus {
     gap: 1rem;
 }
 
-/* Each tile previews its system's theme. */
+/* Each tile previews its theme: the image fills the tile and fades into the theme's
+   background color towards the bottom, where the text sits. */
 .system-tile {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
-    min-height: 170px;
+    justify-content: flex-end;
+    gap: 0.3rem;
+    min-height: 240px;
     padding: 1.4rem;
+    overflow: hidden;
     color: var(--sys-text);
     text-decoration: none;
-    background: var(--sys-bg);
+    background-color: var(--sys-bg);
+    background-image:
+        linear-gradient(to bottom,
+            transparent 0%,
+            color-mix(in srgb, var(--sys-bg) 35%, transparent) 35%,
+            color-mix(in srgb, var(--sys-bg) 88%, transparent) 62%,
+            var(--sys-bg) 100%),
+        var(--tile-image, none);
+    background-size: cover;
+    background-position: center top;
     border: 1px solid var(--sys-border);
     border-top: 4px solid var(--sys-accent);
     border-radius: var(--app-radius);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+
+    .system-tile.system-tile-light {
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+    }
 
     .system-tile:hover, .system-tile:focus-visible {
         color: var(--sys-text);
@@ -172,7 +190,6 @@ h1:focus {
 
 .system-tile-disabled {
     cursor: default;
-    opacity: 0.75;
 }
 
     .system-tile-disabled:hover {
@@ -180,8 +197,13 @@ h1:focus {
         box-shadow: none;
     }
 
+    .system-tile-disabled .system-tile-meta {
+        color: var(--sys-muted);
+    }
+
 .system-tile-label {
     font-size: 0.75rem;
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--sys-muted);
@@ -189,21 +211,25 @@ h1:focus {
 
 .system-tile-name {
     font-family: var(--sys-heading-font);
-    font-size: 1.35rem;
-    font-weight: 600;
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1.2;
 }
 
 .system-tile-tagline {
     font-family: var(--sys-body-font);
-    color: var(--sys-muted);
+    color: var(--sys-text);
+    opacity: 0.85;
 }
 
 .system-tile-meta {
-    margin-top: auto;
+    margin-top: 0.35rem;
     font-size: 0.8rem;
+    font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: var(--sys-accent);
+    /* Plain accent colors are too dark/light for small text on some themes. */
+    color: color-mix(in srgb, var(--sys-accent) 60%, var(--sys-text));
 }
 
 .back-link {
