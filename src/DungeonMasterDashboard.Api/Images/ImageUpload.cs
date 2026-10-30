@@ -37,6 +37,17 @@ internal static class ImageUpload
         return (new UploadedImage(data, contentType), null);
     }
 
+    public static void Store(IStoredImage image, UploadedImage upload, DateTimeOffset now)
+    {
+        image.Data = upload.Data;
+        image.ContentType = upload.ContentType;
+        image.UpdatedAt = now;
+    }
+
+    public static IResult Serve(IStoredImage? image) => image is null
+        ? TypedResults.NotFound()
+        : TypedResults.File(image.Data, image.ContentType, lastModified: image.UpdatedAt);
+
     // Checks the file signature so a renamed non-image is rejected.
     private static bool LooksLike(string contentType, byte[] data) => contentType switch
     {

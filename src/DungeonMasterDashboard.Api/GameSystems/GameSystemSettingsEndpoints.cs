@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using DungeonMasterDashboard.Api.Common;
 using DungeonMasterDashboard.Api.Data;
 using DungeonMasterDashboard.Api.Images;
 using DungeonMasterDashboard.Contracts.GameSystems;
@@ -61,21 +62,17 @@ internal static class GameSystemSettingsEndpoints
             return TypedResults.NotFound();
         }
 
-        var errors = Validate(request);
-        if (errors.Count > 0)
+        var validation = Validate(request);
+        if (validation.Any)
         {
-            return TypedResults.ValidationProblem(errors);
+            return TypedResults.ValidationProblem(validation.Errors);
         }
 
-        var settings = await db.GameSystemSettings.FirstOrDefaultAsync(s => s.SystemId == systemId, cancellationToken);
-        if (settings is null)
-        {
-            settings = new GameSystemSettings { SystemId = systemId };
-            db.GameSystemSettings.Add(settings);
-        }
+        var settings = await db.GameSystemSettings.FindAsync([systemId], cancellationToken)
+            ?? db.GameSystemSettings.Add(new GameSystemSettings { SystemId = systemId }).Entity;
 
-        settings.Name = Clean(request.Name);
-        settings.Tagline = Clean(request.Tagline);
+        settings.Name = TextInput.Clean(request.Name);
+        settings.Tagline = TextInput.Clean(request.Tagline);
         settings.IsHidden = request.IsHidden;
         settings.HiddenToolIds = request.HiddenToolIds.Distinct().ToList();
         settings.IsDark = request.IsDark;
@@ -86,8 +83,8 @@ internal static class GameSystemSettingsEndpoints
         settings.Accent = request.Accent;
         settings.AccentText = request.AccentText;
         settings.Border = request.Border;
-        settings.HeadingFont = Clean(request.HeadingFont);
-        settings.BodyFont = Clean(request.BodyFont);
+        settings.HeadingFont = TextInput.Clean(request.HeadingFont);
+        settings.BodyFont = TextInput.Clean(request.BodyFont);
         settings.UpdatedAt = time.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
 
@@ -102,13 +99,8 @@ internal static class GameSystemSettingsEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<IResult> GetImageAsync(string systemId, DashboardDbContext db, CancellationToken cancellationToken)
-    {
-        var image = await db.GameSystemImages.AsNoTracking().FirstOrDefaultAsync(i => i.SystemId == systemId, cancellationToken);
-        return image is null
-            ? TypedResults.NotFound()
-            : TypedResults.File(image.Data, image.ContentType, lastModified: image.UpdatedAt);
-    }
+    private static async Task<IResult> GetImageAsync(string systemId, DashboardDbContext db, CancellationToken cancellationToken) =>
+        ImageUpload.Serve(await db.GameSystemImages.AsNoTracking().FirstOrDefaultAsync(i => i.SystemId == systemId, cancellationToken));
 
     private static async Task<IResult> UploadImageAsync(
         string systemId, HttpRequest request, DashboardDbContext db, TimeProvider time, CancellationToken cancellationToken)
@@ -124,16 +116,9 @@ internal static class GameSystemSettingsEndpoints
             return error!;
         }
 
-        var image = await db.GameSystemImages.FirstOrDefaultAsync(i => i.SystemId == systemId, cancellationToken);
-        if (image is null)
-        {
-            image = new GameSystemImage { SystemId = systemId, Data = upload.Data, ContentType = upload.ContentType };
-            db.GameSystemImages.Add(image);
-        }
-
-        image.Data = upload.Data;
-        image.ContentType = upload.ContentType;
-        image.UpdatedAt = time.GetUtcNow();
+        var image = await db.GameSystemImages.FindAsync([systemId], cancellationToken)
+            ?? db.GameSystemImages.Add(new GameSystemImage { SystemId = systemId, Data = [], ContentType = "" }).Entity;
+        ImageUpload.Store(image, upload, time.GetUtcNow());
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.NoContent();
@@ -168,45 +153,27 @@ internal static class GameSystemSettingsEndpoints
         ImageUpdatedAt = imageUpdatedAt,
     };
 
-    private static Dictionary<string, string[]> Validate(GameSystemSettingsDto request)
+    // Every value is optional here: null means "use the default from the web app".
+    private static ValidationErrors Validate(GameSystemSettingsDto request)
     {
-        var errors = new Dictionary<string, string[]>();
-
-        if (request.Name is not null && (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > NameMaxLength))
-        {
-            errors[nameof(request.Name)] = [$"Name must be 1 to {NameMaxLength} characters."];
-        }
-
-        if (request.Tagline is { Length: > TaglineMaxLength })
-        {
-            errors[nameof(request.Tagline)] = [$"Tagline can be at most {TaglineMaxLength} characters."];
-        }
-
-        (string Field, string? Value)[] colors =
-        [
-            (nameof(request.Background), request.Background), (nameof(request.Surface), request.Surface),
-            (nameof(request.Text), request.Text), (nameof(request.MutedText), request.MutedText),
-            (nameof(request.Accent), request.Accent), (nameof(request.AccentText), request.AccentText),
-            (nameof(request.Border), request.Border),
-        ];
-        foreach (var (field, value) in colors.Where(c => c.Value is not null && !Color().IsMatch(c.Value)))
-        {
-            errors[field] = ["Use a hex color like #1a2b3c."];
-        }
-
-        (string Field, string? Value)[] fonts = [(nameof(request.HeadingFont), request.HeadingFont), (nameof(request.BodyFont), request.BodyFont)];
-        foreach (var (field, value) in fonts.Where(f => f.Value is not null && (f.Value.Length > FontMaxLength || !FontFamily().IsMatch(f.Value))))
-        {
-            errors[field] = ["Not a valid font list."];
-        }
+        var validation = new ValidationErrors();
+        validation.Name(request.Name, required: false);
+        validation.MaxLength(nameof(request.Tagline), request.Tagline, TaglineMaxLength);
+        validation.Color(nameof(request.Background), request.Background);
+        validation.Color(nameof(request.Surface), request.Surface);
+        validation.Color(nameof(request.Text), request.Text);
+        validation.Color(nameof(request.MutedText), request.MutedText);
+        validation.Color(nameof(request.Accent), request.Accent);
+        validation.Color(nameof(request.AccentText), request.AccentText);
+        validation.Color(nameof(request.Border), request.Border);
+        validation.Font(nameof(request.HeadingFont), request.HeadingFont);
+        validation.Font(nameof(request.BodyFont), request.BodyFont);
 
         if (request.HiddenToolIds.Count > 100 || request.HiddenToolIds.Any(id => !Id().IsMatch(id)))
         {
-            errors[nameof(request.HiddenToolIds)] = ["Invalid tool ids."];
+            validation.Add(nameof(request.HiddenToolIds), "Invalid tool ids.");
         }
 
-        return errors;
+        return validation;
     }
-
-    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

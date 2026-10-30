@@ -2,13 +2,13 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using DungeonMasterDashboard.Web;
 using DungeonMasterDashboard.Web.Api;
 using DungeonMasterDashboard.Web.Auth;
 using DungeonMasterDashboard.Web.Components;
 using DungeonMasterDashboard.Web.Components.Account;
 using DungeonMasterDashboard.Web.Data;
 using DungeonMasterDashboard.Web.GameSystems;
-using DungeonMasterDashboard.Web.Worlds;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -97,8 +97,6 @@ app.MapRazorComponents<App>()
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
 
-app.MapTileImages();
-app.MapSystemImages();
-app.MapWorldImages();
+app.MapImageEndpoints();
 
 app.Run();

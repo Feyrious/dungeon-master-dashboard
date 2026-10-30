@@ -5,7 +5,7 @@ namespace DungeonMasterDashboard.Web.GameSystems;
 // Picks the default background image for a game system tile. An image dropped into the
 // folder configured as TileImages:Path (named after the system's id, e.g. dnd5e.jpg)
 // replaces the built-in illustration in wwwroot/img/tiles. Those custom images may be
-// publisher art, so they are served only to signed-in users (see MapTileImages).
+// publisher art, so they are served only to signed-in users (see ImageEndpoints).
 public sealed class TileImages(IConfiguration configuration, IWebHostEnvironment environment, GameSystemCatalog catalog)
 {
     private static readonly string[] Extensions = [".webp", ".jpg", ".jpeg", ".png", ".avif"];
@@ -37,14 +37,4 @@ public sealed class TileImages(IConfiguration configuration, IWebHostEnvironment
         ContentTypes.TryGetContentType(file.Name, out var contentType) ? contentType : "application/octet-stream";
 
     private bool IsKnownTile(string tileId) => catalog.Systems.Any(s => s.Id == tileId);
-}
-
-internal static class TileImagesEndpointRouteBuilderExtensions
-{
-    public static IEndpointConventionBuilder MapTileImages(this IEndpointRouteBuilder endpoints) =>
-        endpoints.MapGet("/tile-images/{tileId}", (string tileId, TileImages tileImages) =>
-                tileImages.FindCustomImage(tileId) is { } file
-                    ? Results.File(file.FullName, TileImages.ContentTypeFor(file), lastModified: file.LastWriteTimeUtc)
-                    : Results.NotFound())
-            .RequireAuthorization();
 }

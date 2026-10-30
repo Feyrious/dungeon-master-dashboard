@@ -23,14 +23,14 @@ public sealed class ThemeDraft
 
     public string BodyFont { get; set; } = "";
 
-    public static ThemeDraft From(GameSystemTheme theme)
+    public static ThemeDraft From(TileTheme theme)
     {
         var draft = new ThemeDraft();
         draft.CopyFrom(theme);
         return draft;
     }
 
-    public void CopyFrom(GameSystemTheme theme)
+    public void CopyFrom(TileTheme theme)
     {
         IsDark = theme.IsDark;
         Background = theme.Background;
@@ -44,7 +44,7 @@ public sealed class ThemeDraft
         BodyFont = theme.BodyFont;
     }
 
-    public GameSystemTheme ToTheme() =>
+    public TileTheme ToTheme() =>
         new(IsDark, Background, Surface, Text, MutedText, Accent, AccentText, Border, HeadingFont, BodyFont);
 
     // A comparable summary, used to detect unsaved changes.
@@ -53,4 +53,4 @@ public sealed class ThemeDraft
         HeadingFont, BodyFont);
 }
 
-public sealed record ThemePreset(string Label, GameSystemTheme Theme);
+public sealed record ThemePreset(string Label, TileTheme Theme);

@@ -1,6 +1,5 @@
 using DungeonMasterDashboard.Contracts;
 using DungeonMasterDashboard.Contracts.Worlds;
-using DungeonMasterDashboard.Web.Api;
 using DungeonMasterDashboard.Web.GameSystems;
 
 namespace DungeonMasterDashboard.Web.Worlds;
@@ -9,7 +8,7 @@ namespace DungeonMasterDashboard.Web.Worlds;
 public static class WorldTiles
 {
     // Theme for new worlds, matching the neutral look of the site.
-    public static GameSystemTheme DefaultTheme { get; } = new(
+    public static TileTheme DefaultTheme { get; } = new(
         IsDark: true,
         Background: "#15171c",
         Surface: "#1f232a",
@@ -30,23 +29,4 @@ public static class WorldTiles
 
     public static string LinkText(WorldDto world) =>
         string.IsNullOrWhiteSpace(world.Url) ? "Link not set yet" : $"{WikiSoftware.LinkTextFor(world.WikiSoftware)} ↗";
-}
-
-internal static class WorldImagesEndpointRouteBuilderExtensions
-{
-    // Uploaded world images live in the API, which isn't reachable from the browser,
-    // so they're passed through here for signed-in users.
-    public static IEndpointConventionBuilder MapWorldImages(this IEndpointRouteBuilder endpoints) =>
-        endpoints.MapGet("/world-images/{worldId:int}", async (int worldId, HttpContext context, ApiClient api, CancellationToken cancellationToken) =>
-            {
-                if (await api.GetWorldImageAsync(worldId, context.User, cancellationToken) is not { } image)
-                {
-                    return Results.NotFound();
-                }
-
-                // The URL carries the upload time, so the image can be cached until it changes.
-                context.Response.Headers.CacheControl = "private, max-age=31536000, immutable";
-                return Results.File(image.Data, image.ContentType);
-            })
-            .RequireAuthorization();
 }

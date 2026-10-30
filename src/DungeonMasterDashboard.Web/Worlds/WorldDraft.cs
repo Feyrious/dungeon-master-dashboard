@@ -34,7 +34,7 @@ public sealed class WorldDraft
         Label = world.Label ?? "",
         Url = world.Url ?? "",
         WikiSoftware = world.WikiSoftware ?? "other",
-        Theme = ThemeDraft.From(GameSystemTheme.From(world.Theme)),
+        Theme = ThemeDraft.From(TileTheme.From(world.Theme)),
     };
 
     public WorldDto ToDto() => new()

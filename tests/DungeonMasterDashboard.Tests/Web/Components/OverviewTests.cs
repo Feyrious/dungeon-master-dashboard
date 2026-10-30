@@ -26,7 +26,7 @@ public class OverviewTests : DialogTestContext
     public void Shows_worlds_and_game_systems()
     {
         ApiReturns();
-        var page = Render<Systems>();
+        var page = Render<Overview>();
 
         var worlds = page.FindAll("#worlds-heading ~ * .system-tile, .overview-section:first-of-type .system-tile");
         Assert.Multiple(() =>
@@ -45,7 +45,7 @@ public class OverviewTests : DialogTestContext
     public void Hidden_systems_are_listed_separately()
     {
         ApiReturns(settings: [new GameSystemSettingsDto { SystemId = "kult", IsHidden = true }]);
-        var page = Render<Systems>();
+        var page = Render<Overview>();
 
         Assert.That(page.Find(".hidden-systems summary").TextContent, Is.EqualTo("Hidden game systems (1)"));
         Assert.That(page.Find(".hidden-systems a.system-tile").GetAttribute("href"), Is.EqualTo("systems/kult"));
@@ -55,14 +55,14 @@ public class OverviewTests : DialogTestContext
     public void An_empty_world_list_explains_the_plus_button()
     {
         ApiReturns(worlds: []);
-        Assert.That(Render<Systems>().Find(".overview-empty").TextContent, Does.Contain("Add one with the + button"));
+        Assert.That(Render<Overview>().Find(".overview-empty").TextContent, Does.Contain("Add one with the + button"));
     }
 
     [Test]
     public void Worlds_show_an_error_when_the_api_is_down()
     {
         RespondWith(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
-        var page = Render<Systems>();
+        var page = Render<Overview>();
 
         Assert.That(page.Markup, Does.Contain("Worlds could not be loaded right now."));
         Assert.That(page.FindAll("a[href^='systems/']"), Has.Count.EqualTo(5), "game systems still show with their defaults");
@@ -72,7 +72,7 @@ public class OverviewTests : DialogTestContext
     public void The_plus_button_opens_an_empty_world_dialog()
     {
         ApiReturns();
-        var page = Render<Systems>();
+        var page = Render<Overview>();
 
         page.Find(".overview-add").Click();
 
@@ -85,7 +85,7 @@ public class OverviewTests : DialogTestContext
     public void Pencils_open_the_matching_editor_with_theme_presets()
     {
         ApiReturns();
-        var page = Render<Systems>();
+        var page = Render<Overview>();
 
         page.Find("button[aria-label='Edit Curse of Strahd']").Click();
         Assert.That(page.Find("#world-name").GetAttribute("value"), Is.EqualTo("Curse of Strahd"));
@@ -101,7 +101,7 @@ public class OverviewTests : DialogTestContext
     public void Saving_in_an_editor_reloads_the_overview()
     {
         ApiReturns();
-        var page = Render<Systems>();
+        var page = Render<Overview>();
         page.Find("button[aria-label='Edit KULT: Divinity Lost']").Click();
         page.Find("#settings-name").Input("Kult");
         var loadsBefore = Calls.Count(c => c == "GET /api/systems/settings");

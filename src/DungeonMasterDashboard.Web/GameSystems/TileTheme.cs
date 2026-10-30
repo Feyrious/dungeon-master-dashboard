@@ -2,10 +2,10 @@ using DungeonMasterDashboard.Contracts;
 
 namespace DungeonMasterDashboard.Web.GameSystems;
 
-// Colors and fonts applied to a system's pages and its tile on the overview grid (also used
-// for world tiles).
+// Colors and fonts of a game system or world: its tile on the overview and, for game
+// systems, its pages.
 // Exposed to CSS as --sys-* custom properties.
-public sealed record GameSystemTheme(
+public sealed record TileTheme(
     bool IsDark,
     string Background,
     string Surface,
@@ -19,7 +19,7 @@ public sealed record GameSystemTheme(
 {
     public string BootstrapTheme => IsDark ? "dark" : "light";
 
-    public static GameSystemTheme From(ThemeDto theme) => new(
+    public static TileTheme From(ThemeDto theme) => new(
         theme.IsDark, theme.Background, theme.Surface, theme.Text, theme.MutedText,
         theme.Accent, theme.AccentText, theme.Border, theme.HeadingFont, theme.BodyFont);
 

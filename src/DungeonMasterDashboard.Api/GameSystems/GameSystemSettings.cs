@@ -1,3 +1,5 @@
+using DungeonMasterDashboard.Api.Images;
+
 namespace DungeonMasterDashboard.Api.GameSystems;
 
 // Stored changes to a game system defined in the web app. Null means "use the default".
@@ -37,7 +39,7 @@ public sealed class GameSystemSettings
 }
 
 // Uploaded tile image, kept apart from the settings so listing settings doesn't load images.
-public sealed class GameSystemImage
+public sealed class GameSystemImage : IStoredImage
 {
     public required string SystemId { get; set; }
 

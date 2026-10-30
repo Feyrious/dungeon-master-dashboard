@@ -34,15 +34,21 @@ internal sealed partial class WebFactory(TempDirectory directory) : WebApplicati
     // Submits the sign-in form like a browser would.
     public static async Task<HttpResponseMessage> SignInAsync(HttpClient browser, string email = Email, string password = Password)
     {
-        var page = await browser.GetStringAsync("/");
-        var token = AntiforgeryToken().Match(page).Groups[1].Value;
-        return await browser.PostAsync("/", new FormUrlEncodedContent(new Dictionary<string, string>
+        return await PostFormAsync(browser, "/", new Dictionary<string, string>
         {
-            ["__RequestVerificationToken"] = token,
             ["_handler"] = "login",
             ["Input.Email"] = email,
             ["Input.Password"] = password,
-        }));
+        });
+    }
+
+    // Loads the page with the form first, like a browser, to get its antiforgery token.
+    public static async Task<HttpResponseMessage> PostFormAsync(
+        HttpClient browser, string path, Dictionary<string, string> fields, string? formPage = null)
+    {
+        var page = await browser.GetStringAsync(formPage ?? path);
+        fields["__RequestVerificationToken"] = AntiforgeryToken().Match(page).Groups[1].Value;
+        return await browser.PostAsync(path, new FormUrlEncodedContent(fields));
     }
 
     public static string Location(HttpResponseMessage response) => response.Headers.Location?.OriginalString ?? "";

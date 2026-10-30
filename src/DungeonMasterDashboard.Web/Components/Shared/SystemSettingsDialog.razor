@@ -1,9 +1,9 @@
 @using DungeonMasterDashboard.Contracts
 @using DungeonMasterDashboard.Web.Api
+@inherits SettingsDialogBase
 @inject ApiClient Api
 @inject ConfiguredGameSystems GameSystems
 @inject TileImages TileImages
-@inject IJSRuntime JS
 
 @* Edits a game system: text, tile image, theme and which tools it shows. *@
 
@@ -39,8 +39,8 @@
 
                 <section class="settings-section">
                     <h3>Tile image</h3>
-                    <TileImageEditor @ref="imageEditor" PreviewSelector=".settings-preview" HasUploadedImage="config.HasUploadedImage"
-                                     @bind-Value="imageChange" CroppingChanged="value => cropping = value" />
+                    <TileImageEditor @ref="ImageEditor" PreviewSelector=".settings-preview" HasUploadedImage="config.HasUploadedImage"
+                                     @bind-Value="ImageChange" CroppingChanged="value => Cropping = value" />
                 </section>
 
                 <section class="settings-section">
@@ -76,81 +76,37 @@
                 <SystemTile Theme="draft.Theme.ToTheme()"
                             Name="@(string.IsNullOrWhiteSpace(draft.Name) ? config.Defaults.Name : draft.Name)"
                             Tagline="@(string.IsNullOrWhiteSpace(draft.Tagline) ? config.Defaults.Tagline : draft.Tagline)"
-                            Meta="@ToolCountText"
+                            Meta="@ToolCount.Text(config.AvailableTools.Count(t => !draft.HiddenToolIds.Contains(t.Id)))"
                             ImageUrl="@PreviewImageUrl" />
                 <ContrastChecks Theme="draft.Theme.ToTheme()" />
             </aside>
         </div>
 
-        <footer class="settings-dialog-footer">
-            <div class="settings-reset">
-                @if (confirmingReset)
-                {
-                    <span>Reset name, image, theme and tools to the defaults?</span>
-                    <button type="button" class="btn btn-danger btn-sm" disabled="@busy" @onclick="ResetAsync">Reset</button>
-                    <button type="button" class="btn btn-link btn-sm" @onclick="() => confirmingReset = false">Keep</button>
-                }
-                else
-                {
-                    <button type="button" class="btn btn-link btn-sm text-danger" disabled="@busy" @onclick="() => confirmingReset = true">Reset to defaults</button>
-                }
-            </div>
-            @if (error is not null)
-            {
-                <span class="text-danger small" role="alert">@error</span>
-            }
-            <div class="settings-footer-actions">
-                <button type="button" class="btn btn-outline-secondary" @onclick="RequestCloseAsync">Cancel</button>
-                <button type="submit" class="btn btn-primary" disabled="@(busy || cropping)">@(busy ? "Saving…" : "Save")</button>
-            </div>
-        </footer>
+        <SettingsFooter Error="@Error" Busy="Busy" SaveDisabled="Cropping" OnCancel="RequestCloseAsync">
+            <ConfirmButton Label="Reset to defaults" Question="Reset name, image, theme and tools to the defaults?"
+                           ConfirmLabel="Reset" Disabled="Busy" OnConfirm="ResetAsync" />
+        </SettingsFooter>
     </EditForm>
 </SettingsDialog>
 
 @code {
     private ConfiguredSystem config = default!;
     private SystemSettingsDraft draft = new();
-    private string savedSnapshot = "";
-    private TileImageEditor? imageEditor;
-    private TileImageChange imageChange = TileImageChange.None;
-    private bool cropping;
-    private bool busy;
-    private bool confirmingReset;
-    private string? error;
 
     [Parameter, EditorRequired]
     public ConfiguredSystem Config { get; set; } = default!;
 
-    // Themes that can be copied as a starting point.
-    [Parameter]
-    public IReadOnlyList<ThemePreset> Presets { get; set; } = [];
-
-    // Closes the dialog.
-    [Parameter]
-    public EventCallback OnClose { get; set; }
-
-    // Raised after the system's settings were saved or reset, so the page can refresh.
-    [Parameter]
-    public EventCallback OnChanged { get; set; }
-
-    private bool IsDirty => draft.Snapshot() != savedSnapshot || imageChange != TileImageChange.None;
-
-    private string PreviewImageUrl => imageChange is TileImageChange.Remove ? TileImages.UrlFor(config.Defaults.Id) : config.ImageUrl;
-
-    private string ToolCountText
-    {
-        get
-        {
-            var count = config.AvailableTools.Count(t => !draft.HiddenToolIds.Contains(t.Id));
-            return $"{count} {(count == 1 ? "tool" : "tools")}";
-        }
-    }
+    private string PreviewImageUrl => ImageChange is TileImageChange.Remove ? TileImages.UrlFor(config.Defaults.Id) : config.ImageUrl;
 
     protected override void OnInitialized() => Load(Config);
 
-    // Re-renders the preview after a theme change.
-    private void Refresh()
+    protected override string Snapshot() => draft.Snapshot();
+
+    private void Load(ConfiguredSystem system)
     {
+        config = system;
+        draft = SystemSettingsDraft.From(system);
+        MarkSaved();
     }
 
     private void ToggleTool(string toolId, bool shown)
@@ -167,102 +123,42 @@
 
     private async Task SaveAsync()
     {
-        busy = true;
-        error = null;
-        try
+        var systemId = config.Defaults.Id;
+        var saved = await RunAsync("save", async () =>
         {
-            var systemId = config.Defaults.Id;
             await Api.SaveSystemSettingsAsync(systemId, draft.ToDto(config.Defaults));
-            if (imageChange is TileImageChange.Upload upload)
+            if (ImageChange is TileImageChange.Upload upload)
             {
                 await Api.UploadSystemImageAsync(systemId, upload.Data, upload.ContentType);
             }
-            else if (imageChange is TileImageChange.Remove)
+            else if (ImageChange is TileImageChange.Remove)
             {
                 await Api.DeleteSystemImageAsync(systemId);
             }
+        });
 
-            imageChange = TileImageChange.None;
-            savedSnapshot = draft.Snapshot();
-            await OnChanged.InvokeAsync();
-            await OnClose.InvokeAsync();
-        }
-        catch (HttpRequestException ex)
+        if (saved)
         {
-            error = $"Could not save: {ex.Message}";
-        }
-        finally
-        {
-            busy = false;
+            await SavedAndCloseAsync();
         }
     }
 
+    // Stays open afterwards, showing the defaults.
     private async Task ResetAsync()
     {
-        busy = true;
-        error = null;
-        try
-        {
-            await Api.ResetSystemSettingsAsync(config.Defaults.Id);
-            if (imageEditor is not null)
-            {
-                await imageEditor.CancelCropAsync();
-                await imageEditor.ClearPreviewAsync();
-            }
-
-            Load(await GameSystems.FindAsync(config.Defaults.Id) ?? config);
-            await OnChanged.InvokeAsync();
-        }
-        catch (HttpRequestException ex)
-        {
-            error = $"Could not reset: {ex.Message}";
-        }
-        finally
-        {
-            busy = false;
-            confirmingReset = false;
-        }
-    }
-
-    private void Load(ConfiguredSystem system)
-    {
-        config = system;
-        draft = SystemSettingsDraft.From(system);
-        savedSnapshot = draft.Snapshot();
-        imageChange = TileImageChange.None;
-    }
-
-    // Escape cancels cropping first, then closes the dialog.
-    private async Task OnEscapeAsync()
-    {
-        if (imageEditor?.IsCropping == true)
-        {
-            await imageEditor.CancelCropAsync();
-        }
-        else
-        {
-            await RequestCloseAsync();
-        }
-    }
-
-    private async Task RequestCloseAsync()
-    {
-        if (IsDirty && !await JS.InvokeAsync<bool>("confirm", "Discard your unsaved changes?"))
+        var reset = await RunAsync("reset", () => Api.ResetSystemSettingsAsync(config.Defaults.Id));
+        if (!reset)
         {
             return;
         }
 
-        // Don't ask again on the way out.
-        savedSnapshot = draft.Snapshot();
-        imageChange = TileImageChange.None;
-        await OnClose.InvokeAsync();
-    }
-
-    private async Task ConfirmNavigationAsync(LocationChangingContext context)
-    {
-        if (IsDirty && !await JS.InvokeAsync<bool>("confirm", "Discard your unsaved changes?"))
+        if (ImageEditor is not null)
         {
-            context.PreventNavigation();
+            await ImageEditor.CancelCropAsync();
+            await ImageEditor.ClearPreviewAsync();
         }
+
+        Load(await GameSystems.FindAsync(config.Defaults.Id) ?? config);
+        await OnChanged.InvokeAsync();
     }
 }

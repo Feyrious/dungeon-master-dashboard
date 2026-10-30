@@ -8,7 +8,7 @@ public static class TheExpanse
         Id,
         "The Expanse",
         "Hard sci-fi across a divided solar system.",
-        new GameSystemTheme(
+        new TileTheme(
             IsDark: true,
             Background: "#0a1017",
             Surface: "#111b26",

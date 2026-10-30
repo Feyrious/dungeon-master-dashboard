@@ -8,7 +8,7 @@ public static class TailsOfEquestria
         Id,
         "Tails of Equestria",
         "Friendship and adventure for every age.",
-        new GameSystemTheme(
+        new TileTheme(
             IsDark: false,
             Background: "#fff5fa",
             Surface: "#ffffff",

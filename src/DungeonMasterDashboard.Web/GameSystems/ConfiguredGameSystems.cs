@@ -62,7 +62,7 @@ public sealed class ConfiguredGameSystems(
     {
         Name = settings.Name ?? defaults.Name,
         Tagline = settings.Tagline ?? defaults.Tagline,
-        Theme = new GameSystemTheme(
+        Theme = new TileTheme(
             settings.IsDark ?? defaults.Theme.IsDark,
             settings.Background ?? defaults.Theme.Background,
             settings.Surface ?? defaults.Theme.Surface,
@@ -88,25 +88,4 @@ public sealed class ConfiguredGameSystems(
             return default;
         }
     }
-}
-
-internal static class SystemImagesEndpointRouteBuilderExtensions
-{
-    // Uploaded tile images live in the API, which isn't reachable from the browser,
-    // so they're passed through here for signed-in users.
-    public static IEndpointConventionBuilder MapSystemImages(this IEndpointRouteBuilder endpoints) =>
-        endpoints.MapGet("/system-images/{systemId}", async (
-                string systemId, HttpContext context, GameSystemCatalog catalog, ApiClient api, CancellationToken cancellationToken) =>
-            {
-                if (catalog.FindSystem(systemId) is null
-                    || await api.GetSystemImageAsync(systemId, context.User, cancellationToken) is not { } image)
-                {
-                    return Results.NotFound();
-                }
-
-                // The URL carries the upload time, so the image can be cached until it changes.
-                context.Response.Headers.CacheControl = "private, max-age=31536000, immutable";
-                return Results.File(image.Data, image.ContentType);
-            })
-            .RequireAuthorization();
 }

@@ -8,7 +8,7 @@ public static class DungeonsAndDragons5e
         Id,
         "Dungeons & Dragons 5e",
         "Swords, sorcery and dragons.",
-        new GameSystemTheme(
+        new TileTheme(
             IsDark: true,
             Background: "#17110e",
             Surface: "#251b16",

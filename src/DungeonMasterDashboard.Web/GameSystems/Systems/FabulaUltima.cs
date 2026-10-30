@@ -8,7 +8,7 @@ public static class FabulaUltima
         Id,
         "Fabula Ultima",
         "Heroic adventures in the style of classic JRPGs.",
-        new GameSystemTheme(
+        new TileTheme(
             IsDark: false,
             Background: "#f4f1ff",
             Surface: "#ffffff",

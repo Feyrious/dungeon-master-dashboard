@@ -9,7 +9,7 @@ namespace DungeonMasterDashboard.Tests.Web.Components;
 
 public class SystemTileTests : BunitContext
 {
-    private static readonly GameSystemTheme Dark = DungeonsAndDragons5e.Definition.Theme;
+    private static readonly TileTheme Dark = DungeonsAndDragons5e.Definition.Theme;
 
     [Test]
     public void Renders_a_link_with_the_theme_and_image()

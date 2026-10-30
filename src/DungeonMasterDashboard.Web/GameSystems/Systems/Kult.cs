@@ -8,7 +8,7 @@ public static class Kult
         Id,
         "KULT: Divinity Lost",
         "Contemporary horror behind the veil of reality.",
-        new GameSystemTheme(
+        new TileTheme(
             IsDark: true,
             Background: "#0b0909",
             Surface: "#161111",

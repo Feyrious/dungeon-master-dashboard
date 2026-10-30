@@ -46,20 +46,6 @@ public class GameSystemCatalogTests
     }
 
     [Test]
-    public void FindTool_only_finds_tools_available_in_the_system()
-    {
-        var dnd = Catalog.FindSystem("dnd5e")!;
-        var kult = Catalog.FindSystem("kult")!;
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(Catalog.FindTool(dnd, "MONSTERS")?.Name, Is.EqualTo("Monster Browser"));
-            Assert.That(Catalog.FindTool(kult, "monsters"), Is.Null);
-            Assert.That(Catalog.FindTool(kult, "unknown"), Is.Null);
-        });
-    }
-
-    [Test]
     public void Constructor_rejects_duplicate_tool_ids()
     {
         var tool = NpcNameGenerator.Definition;

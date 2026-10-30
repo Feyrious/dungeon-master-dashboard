@@ -6,8 +6,8 @@ namespace DungeonMasterDashboard.Tests.Web.GameSystems;
 
 public class ThemeTests
 {
-    private static readonly GameSystemTheme Dark = DungeonsAndDragons5e.Definition.Theme;
-    private static readonly GameSystemTheme Light = FabulaUltima.Definition.Theme;
+    private static readonly TileTheme Dark = DungeonsAndDragons5e.Definition.Theme;
+    private static readonly TileTheme Light = FabulaUltima.Definition.Theme;
 
     [Test]
     public void ToCssVariables_exposes_every_value()
@@ -33,7 +33,7 @@ public class ThemeTests
 
     [Test]
     public void Dto_round_trip_keeps_all_values() =>
-        Assert.That(GameSystemTheme.From(Dark.ToDto()), Is.EqualTo(Dark));
+        Assert.That(TileTheme.From(Dark.ToDto()), Is.EqualTo(Dark));
 
     [Test]
     public void ThemeDraft_round_trip_keeps_all_values() =>

@@ -164,17 +164,13 @@ public class WebHostTests
     public async Task The_password_can_be_changed()
     {
         await WebFactory.SignInAsync(browser!);
-        var page = await browser!.GetStringAsync("/Account/Manage/ChangePassword");
-        var token = System.Text.RegularExpressions.Regex.Match(page, "name=\"__RequestVerificationToken\" value=\"([^\"]+)\"").Groups[1].Value;
-
-        var response = await browser.PostAsync("/Account/Manage/ChangePassword", new FormUrlEncodedContent(new Dictionary<string, string>
+        var response = await WebFactory.PostFormAsync(browser!, "/Account/Manage/ChangePassword", new Dictionary<string, string>
         {
-            ["__RequestVerificationToken"] = token,
             ["_handler"] = "change-password",
             ["Input.OldPassword"] = WebFactory.Password,
             ["Input.NewPassword"] = "Brand-New-Passw0rd!",
             ["Input.ConfirmPassword"] = "Brand-New-Passw0rd!",
-        }));
+        });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Redirect));
 
         using var other = factory!.CreateBrowser();
@@ -194,13 +190,7 @@ public class WebHostTests
     public async Task Logging_out_returns_to_the_sign_in_page()
     {
         await WebFactory.SignInAsync(browser!);
-        var manage = await browser!.GetStringAsync("/Account/Manage");
-        var token = System.Text.RegularExpressions.Regex.Match(manage, "name=\"__RequestVerificationToken\" value=\"([^\"]+)\"").Groups[1].Value;
-
-        var response = await browser!.PostAsync("/Account/Logout", new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["__RequestVerificationToken"] = token,
-        }));
+        var response = await WebFactory.PostFormAsync(browser!, "/Account/Logout", [], formPage: "/Account/Manage");
 
         Assert.That(WebFactory.Location(response), Is.EqualTo("/"));
         Assert.That(WebFactory.IsRedirectToLogin(await browser!.GetAsync("/systems")), Is.True);

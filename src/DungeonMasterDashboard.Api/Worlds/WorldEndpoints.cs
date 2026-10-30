@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using DungeonMasterDashboard.Api.Common;
 using DungeonMasterDashboard.Api.Data;
 using DungeonMasterDashboard.Api.Images;
 using DungeonMasterDashboard.Contracts;
@@ -36,18 +37,14 @@ internal static class WorldEndpoints
 
     private static async Task<IResult> CreateAsync(WorldDto request, DashboardDbContext db, TimeProvider time, CancellationToken cancellationToken)
     {
-        var errors = Validate(request);
-        if (errors.Count > 0)
+        var validation = Validate(request);
+        if (validation.Any)
         {
-            return TypedResults.ValidationProblem(errors);
+            return TypedResults.ValidationProblem(validation.Errors);
         }
 
-        var world = new World
-        {
-            Name = "", Background = "", Surface = "", Text = "", MutedText = "",
-            Accent = "", AccentText = "", Border = "", HeadingFont = "", BodyFont = "",
-            SortOrder = (await db.Worlds.MaxAsync(w => (int?)w.SortOrder, cancellationToken) ?? 0) + 1,
-        };
+        // New worlds go last.
+        var world = new World { SortOrder = (await db.Worlds.MaxAsync(w => (int?)w.SortOrder, cancellationToken) ?? 0) + 1 };
         Apply(world, request, time);
         db.Worlds.Add(world);
         await db.SaveChangesAsync(cancellationToken);
@@ -63,10 +60,10 @@ internal static class WorldEndpoints
             return TypedResults.NotFound();
         }
 
-        var errors = Validate(request);
-        if (errors.Count > 0)
+        var validation = Validate(request);
+        if (validation.Any)
         {
-            return TypedResults.ValidationProblem(errors);
+            return TypedResults.ValidationProblem(validation.Errors);
         }
 
         Apply(world, request, time);
@@ -83,13 +80,8 @@ internal static class WorldEndpoints
         return deleted == 0 ? TypedResults.NotFound() : TypedResults.NoContent();
     }
 
-    private static async Task<IResult> GetImageAsync(int id, DashboardDbContext db, CancellationToken cancellationToken)
-    {
-        var image = await db.WorldImages.AsNoTracking().FirstOrDefaultAsync(i => i.WorldId == id, cancellationToken);
-        return image is null
-            ? TypedResults.NotFound()
-            : TypedResults.File(image.Data, image.ContentType, lastModified: image.UpdatedAt);
-    }
+    private static async Task<IResult> GetImageAsync(int id, DashboardDbContext db, CancellationToken cancellationToken) =>
+        ImageUpload.Serve(await db.WorldImages.AsNoTracking().FirstOrDefaultAsync(i => i.WorldId == id, cancellationToken));
 
     private static async Task<IResult> UploadImageAsync(
         int id, HttpRequest request, DashboardDbContext db, TimeProvider time, CancellationToken cancellationToken)
@@ -105,16 +97,9 @@ internal static class WorldEndpoints
             return error!;
         }
 
-        var image = await db.WorldImages.FirstOrDefaultAsync(i => i.WorldId == id, cancellationToken);
-        if (image is null)
-        {
-            image = new WorldImage { WorldId = id, Data = upload.Data, ContentType = upload.ContentType };
-            db.WorldImages.Add(image);
-        }
-
-        image.Data = upload.Data;
-        image.ContentType = upload.ContentType;
-        image.UpdatedAt = time.GetUtcNow();
+        var image = await db.WorldImages.FindAsync([id], cancellationToken)
+            ?? db.WorldImages.Add(new WorldImage { WorldId = id, Data = [], ContentType = "" }).Entity;
+        ImageUpload.Store(image, upload, time.GetUtcNow());
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.NoContent();
@@ -129,10 +114,10 @@ internal static class WorldEndpoints
     private static void Apply(World world, WorldDto request, TimeProvider time)
     {
         world.Name = request.Name.Trim();
-        world.Tagline = Clean(request.Tagline);
-        world.Label = Clean(request.Label);
-        world.Url = Clean(request.Url);
-        world.WikiSoftware = Clean(request.WikiSoftware);
+        world.Tagline = TextInput.Clean(request.Tagline);
+        world.Label = TextInput.Clean(request.Label);
+        world.Url = TextInput.Clean(request.Url);
+        world.WikiSoftware = TextInput.Clean(request.WikiSoftware);
         world.IsDark = request.Theme.IsDark;
         world.Background = request.Theme.Background;
         world.Surface = request.Theme.Surface;
@@ -161,69 +146,24 @@ internal static class WorldEndpoints
         ImageUpdatedAt = imageUpdatedAt,
     };
 
-    private static Dictionary<string, string[]> Validate(WorldDto request)
+    private static ValidationErrors Validate(WorldDto request)
     {
-        var errors = new Dictionary<string, string[]>();
-
-        if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > NameMaxLength)
-        {
-            errors[nameof(request.Name)] = [$"Name must be 1 to {NameMaxLength} characters."];
-        }
-
-        if (request.Tagline is { Length: > TaglineMaxLength })
-        {
-            errors[nameof(request.Tagline)] = [$"Tagline can be at most {TaglineMaxLength} characters."];
-        }
-
-        if (request.Label is { Length: > LabelMaxLength })
-        {
-            errors[nameof(request.Label)] = [$"Label can be at most {LabelMaxLength} characters."];
-        }
+        var validation = new ValidationErrors();
+        validation.Name(request.Name, required: true);
+        validation.MaxLength(nameof(request.Tagline), request.Tagline, TaglineMaxLength);
+        validation.MaxLength(nameof(request.Label), request.Label, LabelMaxLength);
 
         if (!string.IsNullOrWhiteSpace(request.Url) && !IsWebAddress(request.Url.Trim()))
         {
-            errors[nameof(request.Url)] = ["Use a full web address starting with https:// or http://."];
+            validation.Add(nameof(request.Url), "Use a full web address starting with https:// or http://.");
         }
 
         if (!string.IsNullOrWhiteSpace(request.WikiSoftware) && (request.WikiSoftware.Length > WikiSoftwareMaxLength || !Id().IsMatch(request.WikiSoftware)))
         {
-            errors[nameof(request.WikiSoftware)] = ["Unknown wiki software."];
+            validation.Add(nameof(request.WikiSoftware), "Unknown wiki software.");
         }
 
-        ThemeValidation.Validate(request.Theme, errors);
-        return errors;
-    }
-
-    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-}
-
-internal static class ThemeValidation
-{
-    // Theme values end up in a style attribute, so only plain hex colors and safe font lists pass.
-    public static void Validate(ThemeDto? theme, Dictionary<string, string[]> errors)
-    {
-        if (theme is null)
-        {
-            errors["Theme"] = ["A theme is required."];
-            return;
-        }
-
-        (string Field, string Value)[] colors =
-        [
-            (nameof(theme.Background), theme.Background), (nameof(theme.Surface), theme.Surface),
-            (nameof(theme.Text), theme.Text), (nameof(theme.MutedText), theme.MutedText),
-            (nameof(theme.Accent), theme.Accent), (nameof(theme.AccentText), theme.AccentText),
-            (nameof(theme.Border), theme.Border),
-        ];
-        foreach (var (field, _) in colors.Where(c => c.Value is null || !Color().IsMatch(c.Value)))
-        {
-            errors[$"Theme.{field}"] = ["Use a hex color like #1a2b3c."];
-        }
-
-        (string Field, string Value)[] fonts = [(nameof(theme.HeadingFont), theme.HeadingFont), (nameof(theme.BodyFont), theme.BodyFont)];
-        foreach (var (field, _) in fonts.Where(f => f.Value is null || f.Value.Length > FontMaxLength || !FontFamily().IsMatch(f.Value)))
-        {
-            errors[$"Theme.{field}"] = ["Not a valid font list."];
-        }
+        validation.Theme(request.Theme);
+        return validation;
     }
 }

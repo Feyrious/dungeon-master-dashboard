@@ -57,7 +57,4 @@ public sealed class GameSystemCatalog
 
     public IReadOnlyList<ToolDefinition> ToolsFor(GameSystem system) =>
         Tools.Where(t => t.AvailableIn.Includes(system.Id)).ToList();
-
-    public ToolDefinition? FindTool(GameSystem system, string toolId) =>
-        Tools.FirstOrDefault(t => string.Equals(t.Id, toolId, StringComparison.OrdinalIgnoreCase) && t.AvailableIn.Includes(system.Id));
 }

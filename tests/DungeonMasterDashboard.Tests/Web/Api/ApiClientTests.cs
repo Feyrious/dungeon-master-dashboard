@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
-using DungeonMasterDashboard.Contracts;
 using DungeonMasterDashboard.Contracts.GameSystems;
 using DungeonMasterDashboard.Contracts.Worlds;
 using DungeonMasterDashboard.Tests.TestSupport;
@@ -23,11 +22,12 @@ public class ApiClientTests
     [Test]
     public async Task Requests_carry_a_bearer_token_for_the_current_user()
     {
-        var handler = FakeHttpHandler.ReturningJson(new CurrentUserResponse("user-1", "dm@example.com", null));
-        var user = await Create(handler).GetCurrentUserAsync();
+        var handler = FakeHttpHandler.ReturningJson(Array.Empty<WorldDto>());
+        await Create(handler).GetWorldsAsync();
 
-        Assert.That(user?.Id, Is.EqualTo("user-1"));
-        Assert.That(handler.Requests.Single().Authorization, Does.StartWith("Bearer ey"));
+        var authorization = handler.Requests.Single().Authorization!;
+        Assert.That(authorization, Does.StartWith("Bearer ey"));
+        Assert.That(new Microsoft.IdentityModel.JsonWebTokens.JsonWebToken(authorization["Bearer ".Length..]).Subject, Is.EqualTo("user-1"));
     }
 
     [Test]

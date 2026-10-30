@@ -1,8 +1,8 @@
 @using DungeonMasterDashboard.Contracts
 @using DungeonMasterDashboard.Contracts.Worlds
 @using DungeonMasterDashboard.Web.Api
+@inherits SettingsDialogBase
 @inject ApiClient Api
-@inject IJSRuntime JS
 
 @* Adds or edits a world: text, wiki link, tile image and theme. *@
 
@@ -70,8 +70,8 @@
 
                 <section class="settings-section">
                     <h3>Tile image</h3>
-                    <TileImageEditor @ref="imageEditor" PreviewSelector=".settings-preview" HasUploadedImage="world?.ImageUpdatedAt is not null"
-                                     @bind-Value="imageChange" CroppingChanged="value => cropping = value" />
+                    <TileImageEditor @ref="ImageEditor" PreviewSelector=".settings-preview" HasUploadedImage="world?.ImageUpdatedAt is not null"
+                                     @bind-Value="ImageChange" CroppingChanged="value => Cropping = value" />
                 </section>
 
                 <section class="settings-section">
@@ -92,46 +92,19 @@
             </aside>
         </div>
 
-        <footer class="settings-dialog-footer">
-            <div class="settings-reset">
-                @if (world is not null)
-                {
-                    @if (confirmingDelete)
-                    {
-                        <span>Delete this world tile? The wiki itself isn't affected.</span>
-                        <button type="button" class="btn btn-danger btn-sm" disabled="@busy" @onclick="DeleteAsync">Delete</button>
-                        <button type="button" class="btn btn-link btn-sm" @onclick="() => confirmingDelete = false">Keep</button>
-                    }
-                    else
-                    {
-                        <button type="button" class="btn btn-link btn-sm text-danger" disabled="@busy" @onclick="() => confirmingDelete = true">Delete world</button>
-                    }
-                }
-            </div>
-            @if (error is not null)
+        <SettingsFooter Error="@Error" Busy="Busy" SaveDisabled="Cropping" SaveLabel="@(world is null ? "Add world" : "Save")" OnCancel="RequestCloseAsync">
+            @if (world is not null)
             {
-                <span class="text-danger small" role="alert">@error</span>
+                <ConfirmButton Label="Delete world" Question="Delete this world tile? The wiki itself isn't affected."
+                               ConfirmLabel="Delete" Disabled="Busy" OnConfirm="DeleteAsync" />
             }
-            <div class="settings-footer-actions">
-                <button type="button" class="btn btn-outline-secondary" @onclick="RequestCloseAsync">Cancel</button>
-                <button type="submit" class="btn btn-primary" disabled="@(busy || cropping)">
-                    @(busy ? "Saving…" : world is null ? "Add world" : "Save")
-                </button>
-            </div>
-        </footer>
+        </SettingsFooter>
     </EditForm>
 </SettingsDialog>
 
 @code {
     private WorldDto? world;
     private WorldDraft draft = new();
-    private string savedSnapshot = "";
-    private TileImageEditor? imageEditor;
-    private TileImageChange imageChange = TileImageChange.None;
-    private bool cropping;
-    private bool busy;
-    private bool confirmingDelete;
-    private string? error;
 
     // The world to edit, or null to add a new one.
     [Parameter]
@@ -141,20 +114,7 @@
     [Parameter]
     public IReadOnlyList<string> Labels { get; set; } = [];
 
-    // Themes that can be copied as a starting point.
-    [Parameter]
-    public IReadOnlyList<ThemePreset> Presets { get; set; } = [];
-
-    [Parameter]
-    public EventCallback OnClose { get; set; }
-
-    // Raised after the world was saved or deleted, so the page can refresh.
-    [Parameter]
-    public EventCallback OnChanged { get; set; }
-
-    private bool IsDirty => draft.Snapshot() != savedSnapshot || imageChange != TileImageChange.None;
-
-    private string PreviewImageUrl => (world, imageChange) switch
+    private string PreviewImageUrl => (world, ImageChange) switch
     {
         (null, _) => "img/tiles/world.svg",
         (_, TileImageChange.Remove) => WorldTiles.ImageUrl(world with { ImageUpdatedAt = null }),
@@ -173,19 +133,14 @@
     {
         world = World;
         draft = World is null ? WorldDraft.New() : WorldDraft.From(World);
-        savedSnapshot = draft.Snapshot();
+        MarkSaved();
     }
 
-    // Re-renders the preview after a theme change.
-    private void Refresh()
-    {
-    }
+    protected override string Snapshot() => draft.Snapshot();
 
     private async Task SaveAsync()
     {
-        busy = true;
-        error = null;
-        try
+        var saved = await RunAsync("save", async () =>
         {
             if (world is null)
             {
@@ -197,89 +152,27 @@
                 await Api.UpdateWorldAsync(world.Id, draft.ToDto());
             }
 
-            if (imageChange is TileImageChange.Upload upload)
+            if (ImageChange is TileImageChange.Upload upload)
             {
                 await Api.UploadWorldImageAsync(world.Id, upload.Data, upload.ContentType);
             }
-            else if (imageChange is TileImageChange.Remove)
+            else if (ImageChange is TileImageChange.Remove)
             {
                 await Api.DeleteWorldImageAsync(world.Id);
             }
+        });
 
-            imageChange = TileImageChange.None;
-            savedSnapshot = draft.Snapshot();
-            await OnChanged.InvokeAsync();
-            await OnClose.InvokeAsync();
-        }
-        catch (HttpRequestException ex)
+        if (saved)
         {
-            error = $"Could not save: {ex.Message}";
-        }
-        finally
-        {
-            busy = false;
+            await SavedAndCloseAsync();
         }
     }
 
     private async Task DeleteAsync()
     {
-        if (world is null)
+        if (world is not null && await RunAsync("delete", () => Api.DeleteWorldAsync(world.Id)))
         {
-            return;
-        }
-
-        busy = true;
-        error = null;
-        try
-        {
-            await Api.DeleteWorldAsync(world.Id);
-            savedSnapshot = draft.Snapshot();
-            imageChange = TileImageChange.None;
-            await OnChanged.InvokeAsync();
-            await OnClose.InvokeAsync();
-        }
-        catch (HttpRequestException ex)
-        {
-            error = $"Could not delete: {ex.Message}";
-        }
-        finally
-        {
-            busy = false;
-            confirmingDelete = false;
-        }
-    }
-
-    // Escape cancels cropping first, then closes the dialog.
-    private async Task OnEscapeAsync()
-    {
-        if (imageEditor?.IsCropping == true)
-        {
-            await imageEditor.CancelCropAsync();
-        }
-        else
-        {
-            await RequestCloseAsync();
-        }
-    }
-
-    private async Task RequestCloseAsync()
-    {
-        if (IsDirty && !await JS.InvokeAsync<bool>("confirm", "Discard your unsaved changes?"))
-        {
-            return;
-        }
-
-        // Don't ask again on the way out.
-        savedSnapshot = draft.Snapshot();
-        imageChange = TileImageChange.None;
-        await OnClose.InvokeAsync();
-    }
-
-    private async Task ConfirmNavigationAsync(LocationChangingContext context)
-    {
-        if (IsDirty && !await JS.InvokeAsync<bool>("confirm", "Discard your unsaved changes?"))
-        {
-            context.PreventNavigation();
+            await SavedAndCloseAsync();
         }
     }
 }
