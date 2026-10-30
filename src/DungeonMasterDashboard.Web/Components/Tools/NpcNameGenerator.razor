@@ -1,0 +1,13 @@
+@inherits ToolBase
+
+<ToolPlaceholder>Names will be tailored to @System.Name.</ToolPlaceholder>
+
+@code {
+    public static ToolDefinition Definition { get; } = new(
+        Id: "npc-names",
+        Name: "NPC Names",
+        Description: "Generate names for characters on the fly.",
+        Icon: "🧑",
+        Component: typeof(NpcNameGenerator),
+        AvailableIn: ToolAvailability.AllSystems);
+}

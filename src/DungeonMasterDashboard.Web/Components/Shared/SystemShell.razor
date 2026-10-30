@@ -1,0 +1,30 @@
+@* The themed frame around a game system's pages: side menu with its tools and the page content. *@
+
+<div class="system-shell" data-bs-theme="@Config.System.Theme.BootstrapTheme" style="@Config.System.Theme.ToCssVariables()">
+    <aside class="system-sidebar">
+        <a class="system-back" href="systems">← Overview</a>
+        <NavLink class="system-title" href="@($"systems/{Config.System.Id}")" Match="NavLinkMatch.All">@Config.System.Name</NavLink>
+        <nav class="tool-nav" aria-label="Tools">
+            @foreach (var tool in Config.Tools)
+            {
+                <NavLink class="tool-link" href="@($"systems/{Config.System.Id}/{tool.Id}")">
+                    <span class="tool-icon" aria-hidden="true">@tool.Icon</span>
+                    <span>@tool.Name</span>
+                </NavLink>
+            }
+        </nav>
+        <UserMenu Class="user-menu-sidebar" />
+    </aside>
+
+    <main class="system-main">
+        @ChildContent
+    </main>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ConfiguredSystem Config { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

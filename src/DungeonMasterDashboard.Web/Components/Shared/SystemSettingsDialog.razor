@@ -1,0 +1,164 @@
+@using DungeonMasterDashboard.Contracts
+@using DungeonMasterDashboard.Web.Api
+@inherits SettingsDialogBase
+@inject ApiClient Api
+@inject ConfiguredGameSystems GameSystems
+@inject TileImages TileImages
+
+@* Edits a game system: text, tile image, theme and which tools it shows. *@
+
+<NavigationLock ConfirmExternalNavigation="IsDirty" OnBeforeInternalNavigation="ConfirmNavigationAsync" />
+
+<SettingsDialog Title="Edit game system" OnRequestClose="RequestCloseAsync" OnEscape="OnEscapeAsync">
+    <EditForm Model="draft" OnValidSubmit="SaveAsync" class="settings-dialog-form">
+        <DataAnnotationsValidator />
+        <div class="settings-dialog-body">
+            <div class="settings-sections">
+                <section class="settings-section">
+                    <h3>Details</h3>
+                    <div class="mb-3">
+                        <label class="form-label" for="settings-name">Name</label>
+                        @* Plain inputs so the preview updates while typing. *@
+                        <input id="settings-name" class="form-control" @bind="draft.Name" @bind:event="oninput"
+                               maxlength="@SettingsLimits.NameMaxLength" />
+                        <ValidationMessage For="() => draft.Name" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="settings-tagline">Tagline</label>
+                        <input id="settings-tagline" class="form-control" @bind="draft.Tagline" @bind:event="oninput"
+                               maxlength="@SettingsLimits.TaglineMaxLength" placeholder="@config.Defaults.Tagline" />
+                        <div class="form-text">Leave empty to use the default.</div>
+                        <ValidationMessage For="() => draft.Tagline" />
+                    </div>
+                    <div class="form-check form-switch">
+                        <InputCheckbox id="settings-visible" class="form-check-input" @bind-Value="draft.ShowOnOverview" />
+                        <label class="form-check-label" for="settings-visible">Show on the overview</label>
+                        <div class="form-text">Hidden systems are listed under "Hidden game systems".</div>
+                    </div>
+                </section>
+
+                <section class="settings-section">
+                    <h3>Tile image</h3>
+                    <TileImageEditor @ref="ImageEditor" PreviewSelector=".settings-preview" HasUploadedImage="config.HasUploadedImage"
+                                     @bind-Value="ImageChange" CroppingChanged="value => Cropping = value" />
+                </section>
+
+                <section class="settings-section">
+                    <h3>Theme</h3>
+                    <ThemeEditor Theme="draft.Theme" Presets="Presets" OnChanged="Refresh" />
+                </section>
+
+                <section class="settings-section">
+                    <h3>Tools</h3>
+                    @if (config.AvailableTools.Count == 0)
+                    {
+                        <p class="form-text mb-0">No tools are available for this game system yet.</p>
+                    }
+                    else
+                    {
+                        <p class="form-text">Shown in the side menu for this game system.</p>
+                        @foreach (var tool in config.AvailableTools)
+                        {
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="settings-tool-@tool.Id"
+                                       checked="@(!draft.HiddenToolIds.Contains(tool.Id))" @onchange="e => ToggleTool(tool.Id, (bool)e.Value!)" />
+                                <label class="form-check-label" for="settings-tool-@tool.Id">
+                                    <span aria-hidden="true">@tool.Icon</span> @tool.Name
+                                </label>
+                            </div>
+                        }
+                    }
+                </section>
+            </div>
+
+            <aside class="settings-preview">
+                <span class="settings-preview-label">Preview</span>
+                <SystemTile Theme="draft.Theme.ToTheme()"
+                            Name="@(string.IsNullOrWhiteSpace(draft.Name) ? config.Defaults.Name : draft.Name)"
+                            Tagline="@(string.IsNullOrWhiteSpace(draft.Tagline) ? config.Defaults.Tagline : draft.Tagline)"
+                            Meta="@ToolCount.Text(config.AvailableTools.Count(t => !draft.HiddenToolIds.Contains(t.Id)))"
+                            ImageUrl="@PreviewImageUrl" />
+                <ContrastChecks Theme="draft.Theme.ToTheme()" />
+            </aside>
+        </div>
+
+        <SettingsFooter Error="@Error" Busy="Busy" SaveDisabled="Cropping" OnCancel="RequestCloseAsync">
+            <ConfirmButton Label="Reset to defaults" Question="Reset name, image, theme and tools to the defaults?"
+                           ConfirmLabel="Reset" Disabled="Busy" OnConfirm="ResetAsync" />
+        </SettingsFooter>
+    </EditForm>
+</SettingsDialog>
+
+@code {
+    private ConfiguredSystem config = default!;
+    private SystemSettingsDraft draft = new();
+
+    [Parameter, EditorRequired]
+    public ConfiguredSystem Config { get; set; } = default!;
+
+    private string PreviewImageUrl => ImageChange is TileImageChange.Remove ? TileImages.UrlFor(config.Defaults.Id) : config.ImageUrl;
+
+    protected override void OnInitialized() => Load(Config);
+
+    protected override string Snapshot() => draft.Snapshot();
+
+    private void Load(ConfiguredSystem system)
+    {
+        config = system;
+        draft = SystemSettingsDraft.From(system);
+        MarkSaved();
+    }
+
+    private void ToggleTool(string toolId, bool shown)
+    {
+        if (shown)
+        {
+            draft.HiddenToolIds.Remove(toolId);
+        }
+        else
+        {
+            draft.HiddenToolIds.Add(toolId);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        var systemId = config.Defaults.Id;
+        var saved = await RunAsync("save", async () =>
+        {
+            await Api.SaveSystemSettingsAsync(systemId, draft.ToDto(config.Defaults));
+            if (ImageChange is TileImageChange.Upload upload)
+            {
+                await Api.UploadSystemImageAsync(systemId, upload.Data, upload.ContentType);
+            }
+            else if (ImageChange is TileImageChange.Remove)
+            {
+                await Api.DeleteSystemImageAsync(systemId);
+            }
+        });
+
+        if (saved)
+        {
+            await SavedAndCloseAsync();
+        }
+    }
+
+    // Stays open afterwards, showing the defaults.
+    private async Task ResetAsync()
+    {
+        var reset = await RunAsync("reset", () => Api.ResetSystemSettingsAsync(config.Defaults.Id));
+        if (!reset)
+        {
+            return;
+        }
+
+        if (ImageEditor is not null)
+        {
+            await ImageEditor.CancelCropAsync();
+            await ImageEditor.ClearPreviewAsync();
+        }
+
+        Load(await GameSystems.FindAsync(config.Defaults.Id) ?? config);
+        await OnChanged.InvokeAsync();
+    }
+}

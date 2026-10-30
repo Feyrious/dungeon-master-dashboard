@@ -1,0 +1,23 @@
+<AuthorizeView>
+    <details class="user-menu @Class">
+        <summary title="Account">
+            <span class="user-menu-avatar" aria-hidden="true">@Initial(context.User.Identity?.Name)</span>
+            <span class="user-menu-name">@context.User.Identity?.Name</span>
+        </summary>
+        <div class="user-menu-panel">
+            <a href="Account/Manage">Account settings</a>
+            <form action="Account/Logout" method="post">
+                <AntiforgeryToken />
+                <button type="submit">Log out</button>
+            </form>
+        </div>
+    </details>
+</AuthorizeView>
+
+@code {
+    [Parameter]
+    public string? Class { get; set; }
+
+    private static string Initial(string? name) =>
+        string.IsNullOrEmpty(name) ? "?" : char.ToUpperInvariant(name[0]).ToString();
+}

@@ -1,0 +1,65 @@
+name: dungeon-master-dashboard
+
+services:
+  web:
+    # Released images (see the Release workflow); `--build` builds this tag from source instead.
+    image: ghcr.io/feyrious/dungeon-master-dashboard-web:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/DungeonMasterDashboard.Web/Dockerfile
+    restart: unless-stopped
+    environment:
+      # TLS ends at Cloudflare; trust X-Forwarded-Proto/For so cookies and redirects use https.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ConnectionStrings__DefaultConnection: "DataSource=/app/data/app.db;Cache=Shared"
+      DataProtection__KeysPath: /app/data/keys
+      TileImages__Path: /app/tile-images
+      Api__BaseUrl: http://api:8080
+      Auth__ApiToken__SigningKey: ${API_SIGNING_KEY:?Set API_SIGNING_KEY in .env}
+    env_file:
+      - path: users.env
+        required: false
+    volumes:
+      - web-data:/app/data
+      # Your own tile images (see tile-images/README.md).
+      - ./tile-images:/app/tile-images:ro
+    # Bound to localhost only: reachable by cloudflared on this host, not from the LAN.
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:8080"
+    depends_on:
+      - api
+
+  api:
+    image: ghcr.io/feyrious/dungeon-master-dashboard-api:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/DungeonMasterDashboard.Api/Dockerfile
+    restart: unless-stopped
+    environment:
+      Auth__ApiToken__SigningKey: ${API_SIGNING_KEY:?Set API_SIGNING_KEY in .env}
+      ConnectionStrings__DefaultConnection: "DataSource=/app/data/dashboard.db"
+    # Only read once, to import the old world links into the worlds the app came with.
+    env_file:
+      - path: worlds.env
+        required: false
+    volumes:
+      - api-data:/app/data
+    # No published ports: only the web container can reach the API.
+
+  # Optional: run the Cloudflare Tunnel connector here instead of on the host.
+  # Start with `docker compose --profile tunnel up -d` and point the tunnel's
+  # public hostname at http://web:8080.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: [tunnel]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      # Not marked required: compose validates every service, even ones whose profile is off.
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - web
+
+volumes:
+  web-data:
+  api-data:

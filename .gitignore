@@ -489,6 +489,12 @@ $RECYCLE.BIN/
 .env
 .env.*
 !.env.example
+users.env
+worlds.env
+
+# Own tile images (may be publisher art); only the README is tracked
+tile-images/*
+!tile-images/README.md
 *.env.local
 secrets.json
 appsettings.*.local.json

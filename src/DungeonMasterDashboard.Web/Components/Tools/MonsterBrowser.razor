@@ -1,0 +1,14 @@
+@using DungeonMasterDashboard.Web.GameSystems.Systems
+@inherits ToolBase
+
+<ToolPlaceholder>Browse and search monsters by name, type and challenge rating.</ToolPlaceholder>
+
+@code {
+    public static ToolDefinition Definition { get; } = new(
+        Id: "monsters",
+        Name: "Monster Browser",
+        Description: "Search and read monster stat blocks.",
+        Icon: "🐉",
+        Component: typeof(MonsterBrowser),
+        AvailableIn: ToolAvailability.Only(DungeonsAndDragons5e.Id));
+}

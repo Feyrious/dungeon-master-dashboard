@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a99aff"/>
+      <stop offset="0.55" stop-color="#f3c4f0"/>
+      <stop offset="1" stop-color="#fff1df"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="crystal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c8f4ff"/>
+      <stop offset="1" stop-color="#6c8cff"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="240" fill="url(#sky)"/>
+  <circle cx="205" cy="70" r="70" fill="url(#glow)"/>
+  <g fill="#ffffff" opacity="0.85">
+    <ellipse cx="70" cy="60" rx="38" ry="12"/><ellipse cx="95" cy="52" rx="24" ry="12"/>
+    <ellipse cx="330" cy="40" rx="42" ry="11"/><ellipse cx="350" cy="32" rx="22" ry="11"/>
+  </g>
+  <g>
+    <ellipse cx="80" cy="128" rx="44" ry="10" fill="#8fd18a"/>
+    <path d="M38 128 L80 176 L122 128 Z" fill="#9c86c9"/>
+    <path d="M80 176 L122 128 L100 128 Z" fill="#7c67ad"/>
+    <ellipse cx="335" cy="112" rx="34" ry="8" fill="#8fd18a"/>
+    <path d="M302 112 L335 150 L368 112 Z" fill="#9c86c9"/>
+    <path d="M335 150 L368 112 L350 112 Z" fill="#7c67ad"/>
+    <rect x="70" y="106" width="8" height="18" fill="#6b4f9e"/><path d="M66 106 L74 94 L82 106 Z" fill="#e65c9c"/>
+  </g>
+  <g stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round">
+    <path d="M205 18 L235 68 L205 128 L175 68 Z" fill="url(#crystal)"/>
+    <path d="M205 18 L205 128 L175 68 Z" fill="#ffffff" opacity="0.35"/>
+    <path d="M175 68 L235 68" fill="none" opacity="0.8"/>
+  </g>
+  <g fill="#ffffff">
+    <path transform="translate(150 36)" d="M0 -8 L2 -2 L8 0 L2 2 L0 8 L-2 2 L-8 0 L-2 -2 Z"/>
+    <path transform="translate(262 92) scale(0.7)" d="M0 -8 L2 -2 L8 0 L2 2 L0 8 L-2 2 L-8 0 L-2 -2 Z"/>
+    <path transform="translate(250 30) scale(0.5)" d="M0 -8 L2 -2 L8 0 L2 2 L0 8 L-2 2 L-8 0 L-2 -2 Z"/>
+    <path transform="translate(160 104) scale(0.5)" d="M0 -8 L2 -2 L8 0 L2 2 L0 8 L-2 2 L-8 0 L-2 -2 Z"/>
+  </g>
+</svg>

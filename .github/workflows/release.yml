@@ -1,0 +1,96 @@
+name: Release
+
+# Every update to main builds the web and API container images, pushes them to GitHub
+# Container Registry and publishes them as a GitHub release and a workflow artifact.
+# Versions are date-based: YYYY.MM.DD.N, where N counts the releases made that day.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write # create the tag and the release
+  packages: write # push images to ghcr.io
+
+# One release at a time, so two runs on the same day can't pick the same number.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Pick version and image names
+        id: release
+        run: |
+          day=$(date -u +%Y.%m.%d)
+          released_today=$({ git ls-remote --tags origin "refs/tags/${day}.*" | grep -v '\^{}' || true; } | wc -l)
+          version="${day}.$((released_today + 1))"
+          owner="${GITHUB_REPOSITORY_OWNER,,}" # registry names must be lowercase
+          {
+            echo "version=${version}"
+            echo "web=ghcr.io/${owner}/dungeon-master-dashboard-web"
+            echo "api=ghcr.io/${owner}/dungeon-master-dashboard-api"
+          } >> "$GITHUB_OUTPUT"
+          echo "Releasing ${version}"
+
+      - name: Build images
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          WEB_IMAGE: ${{ steps.release.outputs.web }}
+          API_IMAGE: ${{ steps.release.outputs.api }}
+        run: |
+          build() {
+            docker build --file "$2" --tag "$1:${VERSION}" --tag "$1:latest" \
+              --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+              --label "org.opencontainers.image.version=${VERSION}" \
+              --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+              .
+          }
+          build "$WEB_IMAGE" src/DungeonMasterDashboard.Web/Dockerfile
+          build "$API_IMAGE" src/DungeonMasterDashboard.Api/Dockerfile
+
+      - name: Push images to GitHub Container Registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WEB_IMAGE: ${{ steps.release.outputs.web }}
+          API_IMAGE: ${{ steps.release.outputs.api }}
+        run: |
+          echo "$GITHUB_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push --all-tags "$WEB_IMAGE"
+          docker push --all-tags "$API_IMAGE"
+
+      - name: Save images and deployment files
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          WEB_IMAGE: ${{ steps.release.outputs.web }}
+          API_IMAGE: ${{ steps.release.outputs.api }}
+        run: |
+          mkdir release
+          docker save "${WEB_IMAGE}:${VERSION}" | gzip > "release/dungeon-master-dashboard-web-${VERSION}.tar.gz"
+          docker save "${API_IMAGE}:${VERSION}" | gzip > "release/dungeon-master-dashboard-api-${VERSION}.tar.gz"
+          cp compose.yaml .env.example users.env.example release/
+          ls -lh release
+
+      # Artifacts (~240 MB per release) count towards the account's Actions/Packages storage
+      # quota (500 MB on the free plan for private repos), so they're kept for a day only;
+      # the release keeps the same files permanently and doesn't count towards the quota.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ steps.release.outputs.version }}
+          path: release/
+          retention-days: 1
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          gh release create "$VERSION" release/* \
+            --target "$GITHUB_SHA" \
+            --title "Dungeon Master Dashboard ${VERSION}" \
+            --generate-notes
