@@ -100,6 +100,8 @@ and uploaded images in the `api-data` volume.
 
 ## Running locally
 
+Open `Dungeon Master Dashboard.sln` in Rider or Visual Studio, or use the command line:
+
 ```bash
 dotnet user-secrets --project src/DungeonMasterDashboard.Web set "Auth:SeedUsers:0:Email" "you@example.com"
 dotnet user-secrets --project src/DungeonMasterDashboard.Web set "Auth:SeedUsers:0:Password" "<password>"
