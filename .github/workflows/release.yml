@@ -45,7 +45,9 @@ jobs:
           API_IMAGE: ${{ steps.release.outputs.api }}
         run: |
           build() {
-            docker build --file "$2" --tag "$1:${VERSION}" --tag "$1:latest" \
+            # No provenance/SBOM attestations: they turn the image into an index, and GitHub's
+            # registry then can't see the source label it needs to link a new package to this repo.
+            docker build --provenance=false --sbom=false --file "$2" --tag "$1:${VERSION}" --tag "$1:latest" \
               --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
               --label "org.opencontainers.image.version=${VERSION}" \
               --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
