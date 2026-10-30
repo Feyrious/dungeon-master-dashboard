@@ -41,7 +41,8 @@ The catalog checks on startup that ids are unique and only refer to existing sys
 
 Worlds are managed on the overview: **+** next to the "Worlds" heading adds one, the pencil
 on a world tile edits or deletes it. A world links to its wiki at any address (Foundry VTT
-journal export, World Anvil, Kanka, LegendKeeper, Obsidian Publish, Notion, MediaWiki, …);
+journal export, CC: Web Hub, World Anvil, Kanka, LegendKeeper, Obsidian Publish, Notion,
+MediaWiki, …);
 the chosen wiki software only sets the link text. Like game systems, a world has a tile
 image (upload and crop) and a theme, which can be copied from any system or world. Worlds
 are stored by the Web API (`api-data` volume).
@@ -105,6 +106,28 @@ dotnet user-secrets --project src/DungeonMasterDashboard.Web set "Auth:SeedUsers
 dotnet run --project src/DungeonMasterDashboard.Api --launch-profile http
 dotnet run --project src/DungeonMasterDashboard.Web --launch-profile http
 ```
+
+## Tests
+
+```bash
+dotnet test DungeonMasterDashboard.slnx
+```
+
+The NUnit project in `tests/DungeonMasterDashboard.Tests` covers:
+
+- **Contracts:** validation rules (web addresses, colors, fonts, ids).
+- **Web logic:** game system catalog, themes and editor drafts, contrast checks, world tiles
+  and wiki software, the API client (against a fake API), API tokens, tile images and user
+  seeding.
+- **Web API:** every endpoint against an in-memory API with its own SQLite database,
+  including authentication, validation, image checks and the world link import.
+- **Web app:** sign-in, lockout, logout, password change and which pages need a login, run
+  against an in-memory web app.
+- **Components:** tiles, theme editor, contrast checks, side menu, the overview and both
+  settings dialogs, rendered with [bUnit](https://bunit.dev) (browser scripts are stubbed).
+
+Not covered: the in-browser cropper script and the template's two-factor and passkey
+sign-in flows, which need a real browser or authenticator.
 
 ## Branching model
 

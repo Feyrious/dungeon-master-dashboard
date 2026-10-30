@@ -4,4 +4,7 @@
     <Project Path="src/DungeonMasterDashboard.Contracts/DungeonMasterDashboard.Contracts.csproj" />
     <Project Path="src/DungeonMasterDashboard.Web/DungeonMasterDashboard.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DungeonMasterDashboard.Tests/DungeonMasterDashboard.Tests.csproj" />
+  </Folder>
 </Solution>
