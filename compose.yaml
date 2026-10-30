@@ -42,7 +42,8 @@ services:
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Set TUNNEL_TOKEN in .env}
+      # Not marked required: compose validates every service, even ones whose profile is off.
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
     depends_on:
       - web
 

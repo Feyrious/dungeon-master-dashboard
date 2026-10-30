@@ -22,6 +22,12 @@ internal static class UserSeeder
                 continue;
             }
 
+            if (string.IsNullOrEmpty(seed.Password))
+            {
+                logger.LogWarning("Skipping seed user {Email}: no password configured.", seed.Email);
+                continue;
+            }
+
             var user = new ApplicationUser { UserName = seed.Email, Email = seed.Email, EmailConfirmed = true };
             var result = await userManager.CreateAsync(user, seed.Password);
             if (!result.Succeeded)

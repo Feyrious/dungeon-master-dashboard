@@ -20,11 +20,25 @@ signed with `API_SIGNING_KEY`, and the API rejects any request without a valid o
 
 ## Running with Docker
 
-```bash
-cp .env.example .env            # set API_SIGNING_KEY (openssl rand -base64 48)
-cp users.env.example users.env  # set your email and an initial password
-docker compose up -d --build
-```
+1. Create `.env` with a freshly generated API signing key:
+
+   ```bash
+   sed "s|^API_SIGNING_KEY=.*|API_SIGNING_KEY=$(openssl rand -base64 48)|" .env.example > .env
+   ```
+
+2. Create `users.env`, then open it and fill in your email and an initial password:
+
+   ```bash
+   cp users.env.example users.env
+   ```
+
+3. Build and start:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+Check `docker compose logs web` for `Created user ...` on first start.
 
 The site listens on `127.0.0.1:8080`. Point your Cloudflare Tunnel's public hostname at
 `http://localhost:8080` (cloudflared on the host), or set `TUNNEL_TOKEN` in `.env` and run
