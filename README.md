@@ -112,7 +112,7 @@ dotnet run --project src/DungeonMasterDashboard.Web --launch-profile http
 ## Tests
 
 ```bash
-dotnet test DungeonMasterDashboard.slnx
+dotnet test
 ```
 
 The NUnit project in `tests/DungeonMasterDashboard.Tests` covers:
