@@ -2,6 +2,8 @@ name: dungeon-master-dashboard
 
 services:
   web:
+    # Released images (see the Release workflow); `--build` builds this tag from source instead.
+    image: ghcr.io/feyrious/dungeon-master-dashboard-web:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: src/DungeonMasterDashboard.Web/Dockerfile
@@ -28,6 +30,7 @@ services:
       - api
 
   api:
+    image: ghcr.io/feyrious/dungeon-master-dashboard-api:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: src/DungeonMasterDashboard.Api/Dockerfile

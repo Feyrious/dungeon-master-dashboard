@@ -143,3 +143,39 @@ This repository uses [git-flow](https://github.com/petervanderdoes/gitflow-avh):
 | `bugfix/*`   | Bug fixes (from `develop`)           |
 | `release/*`  | Release preparation                  |
 | `hotfix/*`   | Urgent fixes (from `main`)           |
+
+## Releases
+
+Every update to `main` runs the **Release** workflow (`.github/workflows/release.yml`), which:
+
+1. picks a date-based version, `YYYY.MM.DD.N` (N counts releases that day, e.g. `2026.10.30.1`),
+2. builds the web and API images and pushes them to GitHub Container Registry as
+   `ghcr.io/feyrious/dungeon-master-dashboard-web` and `-api`, tagged with the version and `latest`,
+3. creates a GitHub release with generated notes and attaches both images (`docker save`
+   archives) plus `compose.yaml` and the example env files,
+4. keeps the same files as a workflow artifact for a day.
+
+It can also be started by hand from the Actions tab.
+
+### Running a released version
+
+The images are private like the repository. Log in once on the server with a GitHub token
+that has the `read:packages` scope, then pull and start:
+
+```bash
+docker login ghcr.io -u <github-user>
+```
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+`IMAGE_TAG` in `.env` picks the version (`latest` by default, or e.g. `2026.10.30.1`).
+Without the registry, download the image archives from a release and load them:
+
+```bash
+gunzip -c dungeon-master-dashboard-web-2026.10.30.1.tar.gz | docker load
+```
+
+`docker compose up -d --build` still builds from source, under the same image names.
+
