@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-DungeonMasterDashboard_Web-65138ba6-2cbe-47c1-9456-5cc769430c0b</UserSecretsId>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <!-- Normally inferred from .razor files during restore. The Dockerfile restores with only
+         this file copied, which left blazor.web.js out of the published app. -->
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
   </PropertyGroup>
 
   <ItemGroup>
