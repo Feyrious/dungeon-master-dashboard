@@ -9,6 +9,7 @@ public sealed record WikiSoftware(string Id, string Name, string LinkText)
     public static IReadOnlyList<WikiSoftware> All { get; } =
     [
         new("foundry-export", "Foundry VTT journal export", "Open journals"),
+        new("cc-web-hub", "CC: Web Hub", "Open in Web Hub"),
         new("world-anvil", "World Anvil", "Open in World Anvil"),
         new("kanka", "Kanka", "Open in Kanka"),
         new("legendkeeper", "LegendKeeper", "Open in LegendKeeper"),
