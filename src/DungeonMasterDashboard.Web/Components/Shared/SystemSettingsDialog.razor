@@ -1,23 +1,15 @@
-@using DungeonMasterDashboard.Contracts.GameSystems
+@using DungeonMasterDashboard.Contracts
 @using DungeonMasterDashboard.Web.Api
-@implements IAsyncDisposable
 @inject ApiClient Api
 @inject ConfiguredGameSystems GameSystems
 @inject TileImages TileImages
 @inject IJSRuntime JS
 
-@* Modal for editing a game system: text, tile image (upload and crop), theme and tools. *@
+@* Edits a game system: text, tile image, theme and which tools it shows. *@
 
 <NavigationLock ConfirmExternalNavigation="IsDirty" OnBeforeInternalNavigation="ConfirmNavigationAsync" />
 
-<div class="settings-backdrop" @onclick="RequestCloseAsync"></div>
-<div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title"
-     tabindex="-1" @ref="dialog">
-    <header class="settings-dialog-header">
-        <h2 id="settings-title">Edit game system</h2>
-        <button type="button" class="settings-close" aria-label="Close" @onclick="RequestCloseAsync">×</button>
-    </header>
-
+<SettingsDialog Title="Edit game system" OnRequestClose="RequestCloseAsync" OnEscape="OnEscapeAsync">
     <EditForm Model="draft" OnValidSubmit="SaveAsync" class="settings-dialog-form">
         <DataAnnotationsValidator />
         <div class="settings-dialog-body">
@@ -28,13 +20,13 @@
                         <label class="form-label" for="settings-name">Name</label>
                         @* Plain inputs so the preview updates while typing. *@
                         <input id="settings-name" class="form-control" @bind="draft.Name" @bind:event="oninput"
-                               maxlength="@GameSystemSettingsLimits.NameMaxLength" />
+                               maxlength="@SettingsLimits.NameMaxLength" />
                         <ValidationMessage For="() => draft.Name" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="settings-tagline">Tagline</label>
                         <input id="settings-tagline" class="form-control" @bind="draft.Tagline" @bind:event="oninput"
-                               maxlength="@GameSystemSettingsLimits.TaglineMaxLength" placeholder="@config.Defaults.Tagline" />
+                               maxlength="@SettingsLimits.TaglineMaxLength" placeholder="@config.Defaults.Tagline" />
                         <div class="form-text">Leave empty to use the default.</div>
                         <ValidationMessage For="() => draft.Tagline" />
                     </div>
@@ -47,80 +39,13 @@
 
                 <section class="settings-section">
                     <h3>Tile image</h3>
-                    <div class="settings-image-actions">
-                        <label class="btn btn-outline-secondary btn-sm mb-0">
-                            Upload image…
-                            <input type="file" class="visually-hidden" accept="image/png,image/jpeg,image/webp" @ref="fileInput" />
-                        </label>
-                        @if (HasCustomImage)
-                        {
-                            <button type="button" class="btn btn-link btn-sm" @onclick="UseDefaultImageAsync">Use default image</button>
-                        }
-                        else if (removeImage)
-                        {
-                            <button type="button" class="btn btn-link btn-sm" @onclick="() => removeImage = false">Keep uploaded image</button>
-                        }
-                    </div>
-                    <p class="form-text mb-0">
-                        @ImageStatus
-                    </p>
-
-                    @* Always rendered so the cropper script keeps its elements; hidden until an image is chosen. *@
-                    <div class="cropper @(cropping ? null : "d-none")">
-                        <div class="cropper-frame" @ref="cropFrame"><img alt="" draggable="false" /></div>
-                        <label class="cropper-zoom">
-                            <span>Zoom</span>
-                            <input type="range" class="form-range" min="1" max="4" step="0.01" value="1" @ref="zoomInput" />
-                        </label>
-                        <p class="form-text">Drag the image to choose what shows. The frame has the shape of the tile; the bottom is darkened behind the text.</p>
-                        <div class="settings-image-actions">
-                            <button type="button" class="btn btn-primary btn-sm" disabled="@applyingCrop" @onclick="ApplyCropAsync">Use this crop</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelCropAsync">Cancel</button>
-                        </div>
-                    </div>
-                    @if (imageError is not null)
-                    {
-                        <p class="text-danger small mt-2 mb-0" role="alert">@imageError</p>
-                    }
+                    <TileImageEditor @ref="imageEditor" PreviewSelector=".settings-preview" HasUploadedImage="config.HasUploadedImage"
+                                     @bind-Value="imageChange" CroppingChanged="value => cropping = value" />
                 </section>
 
                 <section class="settings-section">
                     <h3>Theme</h3>
-                    <div class="btn-group mb-3" role="group" aria-label="Theme brightness">
-                        <input type="radio" class="btn-check" name="settings-brightness" id="settings-dark" checked="@draft.IsDark" @onchange="() => draft.IsDark = true" />
-                        <label class="btn btn-outline-secondary btn-sm" for="settings-dark">Dark</label>
-                        <input type="radio" class="btn-check" name="settings-brightness" id="settings-light" checked="@(!draft.IsDark)" @onchange="() => draft.IsDark = false" />
-                        <label class="btn btn-outline-secondary btn-sm" for="settings-light">Light</label>
-                    </div>
-                    <div class="settings-colors">
-                        @foreach (var color in Colors)
-                        {
-                            <label class="settings-color">
-                                <input type="color" value="@color.Get()" @oninput="e => color.Set((string)e.Value!)" />
-                                <span>@color.Label</span>
-                            </label>
-                        }
-                    </div>
-                    <div class="row g-2 mt-2">
-                        <div class="col-sm-6">
-                            <label class="form-label" for="settings-heading-font">Heading font</label>
-                            <InputSelect id="settings-heading-font" class="form-select" @bind-Value="draft.HeadingFont">
-                                @foreach (var font in FontOptions.Including(draft.HeadingFont))
-                                {
-                                    <option value="@font.Css" style="font-family: @font.Css">@font.Label</option>
-                                }
-                            </InputSelect>
-                        </div>
-                        <div class="col-sm-6">
-                            <label class="form-label" for="settings-body-font">Text font</label>
-                            <InputSelect id="settings-body-font" class="form-select" @bind-Value="draft.BodyFont">
-                                @foreach (var font in FontOptions.Including(draft.BodyFont))
-                                {
-                                    <option value="@font.Css" style="font-family: @font.Css">@font.Label</option>
-                                }
-                            </InputSelect>
-                        </div>
-                    </div>
+                    <ThemeEditor Theme="draft.Theme" Presets="Presets" OnChanged="Refresh" />
                 </section>
 
                 <section class="settings-section">
@@ -146,23 +71,14 @@
                 </section>
             </div>
 
-            <aside class="settings-preview" @ref="previewContainer">
+            <aside class="settings-preview">
                 <span class="settings-preview-label">Preview</span>
-                <SystemTile Theme="draft.ToTheme()"
+                <SystemTile Theme="draft.Theme.ToTheme()"
                             Name="@(string.IsNullOrWhiteSpace(draft.Name) ? config.Defaults.Name : draft.Name)"
                             Tagline="@(string.IsNullOrWhiteSpace(draft.Tagline) ? config.Defaults.Tagline : draft.Tagline)"
                             Meta="@ToolCountText"
                             ImageUrl="@PreviewImageUrl" />
-                <ul class="settings-contrast">
-                    @foreach (var (label, ratio) in ContrastChecks)
-                    {
-                        var ok = ratio >= ColorContrast.Readable;
-                        <li class="@(ok ? "ok" : "low")">
-                            <span aria-hidden="true">@(ok ? "✓" : "⚠")</span>
-                            @label <span class="settings-contrast-ratio">@ratio.ToString("0.0"):1@(ok ? "" : " – hard to read")</span>
-                        </li>
-                    }
-                </ul>
+                <ContrastChecks Theme="draft.Theme.ToTheme()" />
             </aside>
         </div>
 
@@ -189,35 +105,25 @@
             </div>
         </footer>
     </EditForm>
-</div>
+</SettingsDialog>
 
 @code {
     private ConfiguredSystem config = default!;
     private SystemSettingsDraft draft = new();
     private string savedSnapshot = "";
-
-    private ElementReference dialog;
-    private ElementReference fileInput;
-    private ElementReference cropFrame;
-    private ElementReference zoomInput;
-    private ElementReference previewContainer;
-    private IJSObjectReference? cropper;
-    private IJSObjectReference? modal;
-    private DotNetObjectReference<SystemSettingsDialog>? selfReference;
-
+    private TileImageEditor? imageEditor;
+    private TileImageChange imageChange = TileImageChange.None;
     private bool cropping;
-    private bool fitPending;
-    private bool applyingCrop;
-    private (byte[] Data, string ContentType)? pendingImage;
-    private bool removeImage;
-    private string? imageError;
-
     private bool busy;
     private bool confirmingReset;
     private string? error;
 
     [Parameter, EditorRequired]
     public ConfiguredSystem Config { get; set; } = default!;
+
+    // Themes that can be copied as a starting point.
+    [Parameter]
+    public IReadOnlyList<ThemePreset> Presets { get; set; } = [];
 
     // Closes the dialog.
     [Parameter]
@@ -227,19 +133,9 @@
     [Parameter]
     public EventCallback OnChanged { get; set; }
 
-    private bool IsDirty => draft.Snapshot() != savedSnapshot || pendingImage is not null || removeImage;
+    private bool IsDirty => draft.Snapshot() != savedSnapshot || imageChange != TileImageChange.None;
 
-    private bool HasCustomImage => pendingImage is not null || (config.HasUploadedImage && !removeImage);
-
-    private string PreviewImageUrl => removeImage ? TileImages.UrlFor(config.Defaults.Id) : config.ImageUrl;
-
-    private string ImageStatus => (pendingImage, removeImage, config.HasUploadedImage) switch
-    {
-        ({ }, _, _) => "New image ready. It's saved when you press Save.",
-        (null, true, _) => "The default image will be used after saving.",
-        (null, false, true) => "Using an uploaded image.",
-        _ => "Using the default image. Upload one to replace it; you can crop and zoom it to fit the tile.",
-    };
+    private string PreviewImageUrl => imageChange is TileImageChange.Remove ? TileImages.UrlFor(config.Defaults.Id) : config.ImageUrl;
 
     private string ToolCountText
     {
@@ -250,121 +146,11 @@
         }
     }
 
-    private IEnumerable<(string Label, double Ratio)> ContrastChecks =>
-    [
-        ("Text on background", ColorContrast.Ratio(draft.Text, draft.Background)),
-        ("Muted text on background", ColorContrast.Ratio(draft.MutedText, draft.Background)),
-        ("Tool count on tile", ColorContrast.Ratio(ColorContrast.Mix(draft.Accent, draft.Text, 0.6), draft.Background)),
-        ("Text on accent", ColorContrast.Ratio(draft.AccentText, draft.Accent)),
-    ];
-
-    private IEnumerable<(string Label, Func<string> Get, Action<string> Set)> Colors =>
-    [
-        ("Background", () => draft.Background, v => draft.Background = v),
-        ("Panels", () => draft.Surface, v => draft.Surface = v),
-        ("Text", () => draft.Text, v => draft.Text = v),
-        ("Muted text", () => draft.MutedText, v => draft.MutedText = v),
-        ("Accent", () => draft.Accent, v => draft.Accent = v),
-        ("Text on accent", () => draft.AccentText, v => draft.AccentText = v),
-        ("Borders", () => draft.Border, v => draft.Border = v),
-    ];
-
     protected override void OnInitialized() => Load(Config);
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    // Re-renders the preview after a theme change.
+    private void Refresh()
     {
-        if (firstRender)
-        {
-            await dialog.FocusAsync();
-            selfReference = DotNetObjectReference.Create(this);
-            modal = await JS.InvokeAsync<IJSObjectReference>("import", "./js/modal.js");
-            await modal.InvokeVoidAsync("listenForEscape", selfReference);
-            cropper = await JS.InvokeAsync<IJSObjectReference>("import", "./js/tile-cropper.js");
-            await cropper.InvokeVoidAsync("attach", fileInput, cropFrame, zoomInput, previewContainer, selfReference);
-        }
-
-        // The crop frame only has a size once it's visible.
-        if (fitPending && cropper is not null)
-        {
-            fitPending = false;
-            await cropper.InvokeVoidAsync("fit", cropFrame);
-        }
-    }
-
-    [JSInvokable]
-    public Task OnImageLoaded()
-    {
-        imageError = null;
-        pendingImage = null;
-        cropping = true;
-        fitPending = true;
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
-    [JSInvokable]
-    public Task OnCropError(string message)
-    {
-        imageError = message;
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
-    private async Task ApplyCropAsync()
-    {
-        if (cropper is null)
-        {
-            return;
-        }
-
-        applyingCrop = true;
-        try
-        {
-            var contentType = await cropper.InvokeAsync<string?>("exportCrop", cropFrame);
-            if (contentType is null || !GameSystemSettingsLimits.ImageContentTypes.Contains(contentType))
-            {
-                imageError = "The image could not be cropped in this browser.";
-                return;
-            }
-
-            var stream = await cropper.InvokeAsync<IJSStreamReference>("takeExport", cropFrame);
-            await using var data = await stream.OpenReadStreamAsync(GameSystemSettingsLimits.ImageMaxBytes);
-            using var buffer = new MemoryStream();
-            await data.CopyToAsync(buffer);
-
-            pendingImage = (buffer.ToArray(), contentType);
-            removeImage = false;
-            imageError = null;
-            cropping = false;
-            await cropper.InvokeVoidAsync("finish", cropFrame);
-        }
-        catch (IOException)
-        {
-            imageError = "The cropped image is too large. Try zooming in a little.";
-        }
-        finally
-        {
-            applyingCrop = false;
-        }
-    }
-
-    private async Task CancelCropAsync()
-    {
-        cropping = false;
-        if (cropper is not null)
-        {
-            await cropper.InvokeVoidAsync("cancel", cropFrame);
-        }
-    }
-
-    private async Task UseDefaultImageAsync()
-    {
-        pendingImage = null;
-        removeImage = config.HasUploadedImage;
-        if (cropper is not null)
-        {
-            await cropper.InvokeVoidAsync("clearPreview", cropFrame);
-        }
     }
 
     private void ToggleTool(string toolId, bool shown)
@@ -387,17 +173,16 @@
         {
             var systemId = config.Defaults.Id;
             await Api.SaveSystemSettingsAsync(systemId, draft.ToDto(config.Defaults));
-            if (pendingImage is { } image)
+            if (imageChange is TileImageChange.Upload upload)
             {
-                await Api.UploadSystemImageAsync(systemId, image.Data, image.ContentType);
+                await Api.UploadSystemImageAsync(systemId, upload.Data, upload.ContentType);
             }
-            else if (removeImage)
+            else if (imageChange is TileImageChange.Remove)
             {
                 await Api.DeleteSystemImageAsync(systemId);
             }
 
-            pendingImage = null;
-            removeImage = false;
+            imageChange = TileImageChange.None;
             savedSnapshot = draft.Snapshot();
             await OnChanged.InvokeAsync();
             await OnClose.InvokeAsync();
@@ -419,10 +204,10 @@
         try
         {
             await Api.ResetSystemSettingsAsync(config.Defaults.Id);
-            await CancelCropAsync();
-            if (cropper is not null)
+            if (imageEditor is not null)
             {
-                await cropper.InvokeVoidAsync("clearPreview", cropFrame);
+                await imageEditor.CancelCropAsync();
+                await imageEditor.ClearPreviewAsync();
             }
 
             Load(await GameSystems.FindAsync(config.Defaults.Id) ?? config);
@@ -444,24 +229,20 @@
         config = system;
         draft = SystemSettingsDraft.From(system);
         savedSnapshot = draft.Snapshot();
-        pendingImage = null;
-        removeImage = false;
+        imageChange = TileImageChange.None;
     }
 
     // Escape cancels cropping first, then closes the dialog.
-    [JSInvokable]
-    public async Task OnEscape()
+    private async Task OnEscapeAsync()
     {
-        if (cropping)
+        if (imageEditor?.IsCropping == true)
         {
-            await CancelCropAsync();
+            await imageEditor.CancelCropAsync();
         }
         else
         {
             await RequestCloseAsync();
         }
-
-        StateHasChanged();
     }
 
     private async Task RequestCloseAsync()
@@ -473,8 +254,7 @@
 
         // Don't ask again on the way out.
         savedSnapshot = draft.Snapshot();
-        pendingImage = null;
-        removeImage = false;
+        imageChange = TileImageChange.None;
         await OnClose.InvokeAsync();
     }
 
@@ -484,29 +264,5 @@
         {
             context.PreventNavigation();
         }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        try
-        {
-            if (modal is not null)
-            {
-                await modal.InvokeVoidAsync("stopListening");
-                await modal.DisposeAsync();
-            }
-
-            if (cropper is not null)
-            {
-                await cropper.InvokeVoidAsync("detach", cropFrame);
-                await cropper.DisposeAsync();
-            }
-        }
-        catch (JSDisconnectedException)
-        {
-            // The browser is already gone.
-        }
-
-        selfReference?.Dispose();
     }
 }

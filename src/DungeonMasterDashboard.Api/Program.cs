@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using DungeonMasterDashboard.Api.Data;
 using DungeonMasterDashboard.Api.GameSystems;
+using DungeonMasterDashboard.Api.Worlds;
 using DungeonMasterDashboard.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -55,7 +56,9 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    scope.ServiceProvider.GetRequiredService<DashboardDbContext>().Database.Migrate();
+    var db = scope.ServiceProvider.GetRequiredService<DashboardDbContext>();
+    db.Database.Migrate();
+    await WorldLinkImport.ImportAsync(db, app.Configuration, app.Logger);
 }
 
 // Configure the HTTP request pipeline.
@@ -76,5 +79,6 @@ app.MapGet("/api/me", (ClaimsPrincipal user) => new CurrentUserResponse(
 .WithName("GetCurrentUser");
 
 app.MapGameSystemSettings();
+app.MapWorlds();
 
 app.Run();

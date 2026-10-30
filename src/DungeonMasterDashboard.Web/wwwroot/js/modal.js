@@ -5,7 +5,7 @@ export function listenForEscape(dotnet) {
     stopListening();
     handler = event => {
         if (event.key === 'Escape') {
-            dotnet.invokeMethodAsync('OnEscape');
+            dotnet.invokeMethodAsync('Escape');
         }
     };
     document.addEventListener('keydown', handler);

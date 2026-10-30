@@ -1,12 +1,12 @@
 # Tile images
 
-Put your own images here to replace the built-in illustrations on the overview tiles.
-Name each file after the tile's id:
+Put your own images here to replace the built-in illustrations on the game system tiles.
+(Uploading an image in a tile's settings on the overview is easier and also works for
+worlds; an uploaded image takes precedence over this folder.) Name each file after the
+system's id:
 
 | Tile | File name |
 |---|---|
-| Curse of Strahd | `curse-of-strahd.jpg` |
-| Rime of the Frostmaiden | `rime-of-the-frostmaiden.jpg` |
 | Dungeons & Dragons 5e | `dnd5e.jpg` |
 | Fabula Ultima | `fabula-ultima.jpg` |
 | The Expanse | `the-expanse.jpg` |

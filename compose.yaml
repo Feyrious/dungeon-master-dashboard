@@ -17,8 +17,6 @@ services:
     env_file:
       - path: users.env
         required: false
-      - path: worlds.env
-        required: false
     volumes:
       - web-data:/app/data
       # Your own tile images (see tile-images/README.md).
@@ -37,6 +35,10 @@ services:
     environment:
       Auth__ApiToken__SigningKey: ${API_SIGNING_KEY:?Set API_SIGNING_KEY in .env}
       ConnectionStrings__DefaultConnection: "DataSource=/app/data/dashboard.db"
+    # Only read once, to import the old world links into the worlds the app came with.
+    env_file:
+      - path: worlds.env
+        required: false
     volumes:
       - api-data:/app/data
     # No published ports: only the web container can reach the API.

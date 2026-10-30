@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using DungeonMasterDashboard.Api.Data;
+using DungeonMasterDashboard.Api.Images;
 using DungeonMasterDashboard.Contracts.GameSystems;
-using static DungeonMasterDashboard.Contracts.GameSystems.GameSystemSettingsLimits;
+using static DungeonMasterDashboard.Contracts.SettingsLimits;
 
 namespace DungeonMasterDashboard.Api.GameSystems;
 
@@ -115,39 +116,21 @@ internal static class GameSystemSettingsEndpoints
             return TypedResults.NotFound();
         }
 
-        var contentType = request.ContentType?.Split(';')[0].Trim().ToLowerInvariant();
-        if (contentType is null || !ImageContentTypes.Contains(contentType))
+        var (upload, error) = await ImageUpload.ReadAsync(request, cancellationToken);
+        if (upload is null)
         {
-            return TypedResults.Problem("Upload a PNG, JPEG or WebP image.", statusCode: StatusCodes.Status415UnsupportedMediaType);
-        }
-
-        using var buffer = new MemoryStream();
-        var chunk = new byte[81920];
-        int read;
-        while ((read = await request.Body.ReadAsync(chunk, cancellationToken)) > 0)
-        {
-            buffer.Write(chunk, 0, read);
-            if (buffer.Length > ImageMaxBytes)
-            {
-                return TypedResults.Problem($"Images can be at most {ImageMaxBytes / 1024 / 1024} MB.", statusCode: StatusCodes.Status413PayloadTooLarge);
-            }
-        }
-
-        var data = buffer.ToArray();
-        if (!LooksLike(contentType, data))
-        {
-            return TypedResults.Problem("The file is not a valid image.", statusCode: StatusCodes.Status400BadRequest);
+            return error!;
         }
 
         var image = await db.GameSystemImages.FirstOrDefaultAsync(i => i.SystemId == systemId, cancellationToken);
         if (image is null)
         {
-            image = new GameSystemImage { SystemId = systemId, Data = data, ContentType = contentType };
+            image = new GameSystemImage { SystemId = systemId, Data = upload.Data, ContentType = upload.ContentType };
             db.GameSystemImages.Add(image);
         }
 
-        image.Data = data;
-        image.ContentType = contentType;
+        image.Data = upload.Data;
+        image.ContentType = upload.ContentType;
         image.UpdatedAt = time.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
 
@@ -224,13 +207,4 @@ internal static class GameSystemSettingsEndpoints
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    // Checks the file signature so a renamed non-image is rejected.
-    private static bool LooksLike(string contentType, byte[] data) => contentType switch
-    {
-        "image/png" => data.AsSpan().StartsWith((byte[])[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
-        "image/jpeg" => data.AsSpan().StartsWith((byte[])[0xFF, 0xD8, 0xFF]),
-        "image/webp" => data.Length > 12 && data.AsSpan(0, 4).SequenceEqual("RIFF"u8) && data.AsSpan(8, 4).SequenceEqual("WEBP"u8),
-        _ => false,
-    };
 }

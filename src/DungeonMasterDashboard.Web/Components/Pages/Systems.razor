@@ -1,45 +1,65 @@
 @page "/systems"
 @rendermode InteractiveServer
-@inject GameSystemCatalog Catalog
+@using DungeonMasterDashboard.Contracts.Worlds
+@using DungeonMasterDashboard.Web.Api
 @inject ConfiguredGameSystems GameSystems
-@inject IConfiguration Configuration
-@inject TileImages TileImages
+@inject ApiClient Api
+@inject ILogger<Systems> Logger
 
 <PageTitle>Dungeon Master Dashboard</PageTitle>
 
 <div class="systems-page">
     <h1 class="visually-hidden">Dungeon Master Dashboard</h1>
 
-    @if (Catalog.Worlds.Count > 0)
-    {
-        <section class="overview-section" aria-labelledby="worlds-heading">
+    <section class="overview-section" aria-labelledby="worlds-heading">
+        <div class="overview-heading">
             <h2 id="worlds-heading">Worlds</h2>
+            <button type="button" class="overview-add" title="Add world" aria-label="Add world" @onclick="() => editingWorld = NewWorld">
+                <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="currentColor">
+                    <path d="M8 1.5a.75.75 0 0 1 .75.75v5h5a.75.75 0 0 1 0 1.5h-5v5a.75.75 0 0 1-1.5 0v-5h-5a.75.75 0 0 1 0-1.5h5v-5A.75.75 0 0 1 8 1.5" />
+                </svg>
+            </button>
+        </div>
+        @if (worldsError is not null)
+        {
+            <p class="text-danger">@worldsError</p>
+        }
+        else if (worlds.Count == 0)
+        {
+            <p class="overview-empty">No worlds yet. Add one with the + button to link to its wiki.</p>
+        }
+        else
+        {
             <div class="system-grid">
-                @foreach (var world in Catalog.Worlds)
+                @foreach (var world in worlds)
                 {
-                    var url = Configuration[$"Worlds:{world.Id}:Url"];
-                    var linked = !string.IsNullOrWhiteSpace(url);
-                    <SystemTile Theme="world.Theme"
-                                Name="@world.Name"
-                                Tagline="@world.Tagline"
-                                Label="@SystemName(world.SystemId)"
-                                Meta="@(linked ? "Open journals ↗" : "Link not set yet")"
-                                ImageUrl="@TileImages.UrlFor(world.Id)"
-                                Href="@(linked ? url : null)"
-                                Class="@(linked ? null : "system-tile-disabled")"
-                                target="@(linked ? "_blank" : null)"
-                                rel="@(linked ? "noopener noreferrer" : null)" />
+                    var linked = !string.IsNullOrWhiteSpace(world.Url);
+                    <div class="system-tile-wrapper">
+                        <SystemTile Theme="GameSystemTheme.From(world.Theme)"
+                                    Name="@world.Name"
+                                    Tagline="@world.Tagline"
+                                    Label="@world.Label"
+                                    Meta="@WorldTiles.LinkText(world)"
+                                    ImageUrl="@WorldTiles.ImageUrl(world)"
+                                    Href="@(linked ? world.Url : null)"
+                                    Class="@(linked ? null : "system-tile-disabled")"
+                                    target="@(linked ? "_blank" : null)"
+                                    rel="@(linked ? "noopener noreferrer" : null)" />
+                        @EditButton(world.Name, GameSystemTheme.From(world.Theme), () => editingWorld = world)
+                    </div>
                 }
             </div>
-        </section>
-    }
+        }
+    </section>
 
     <section class="overview-section" aria-labelledby="tools-heading">
-        <h2 id="tools-heading">Tools</h2>
+        <div class="overview-heading">
+            <h2 id="tools-heading">Tools</h2>
+        </div>
         <div class="system-grid">
             @foreach (var system in systems.Where(s => !s.IsHidden))
             {
-                @EditableTile(system)
+                @SystemTileWithEdit(system)
             }
         </div>
 
@@ -50,7 +70,7 @@
                 <div class="system-grid">
                     @foreach (var system in systems.Where(s => s.IsHidden))
                     {
-                        @EditableTile(system)
+                        @SystemTileWithEdit(system)
                     }
                 </div>
             </details>
@@ -58,24 +78,53 @@
     </section>
 </div>
 
-@if (editing is not null)
+@if (editingSystem is not null)
 {
-    <SystemSettingsDialog @key="editing.Defaults.Id" Config="editing" OnClose="() => editing = null" OnChanged="ReloadAsync" />
+    <SystemSettingsDialog @key="editingSystem.Defaults.Id" Config="editingSystem" Presets="ThemePresets"
+                          OnClose="() => editingSystem = null" OnChanged="ReloadAsync" />
+}
+
+@if (editingWorld is not null)
+{
+    <WorldSettingsDialog @key="editingWorld.Id" World="@(ReferenceEquals(editingWorld, NewWorld) ? null : editingWorld)"
+                         Labels="@(systems.Select(s => s.System.Name).ToList())" Presets="ThemePresets"
+                         OnClose="() => editingWorld = null" OnChanged="ReloadAsync" />
 }
 
 @code {
+    // Stands in for "a world that doesn't exist yet" while the add dialog is open.
+    private static readonly WorldDto NewWorld = new() { Id = 0, Name = "", Theme = WorldTiles.DefaultTheme.ToDto() };
+
     private IReadOnlyList<ConfiguredSystem> systems = [];
-    private ConfiguredSystem? editing;
+    private IReadOnlyList<WorldDto> worlds = [];
+    private string? worldsError;
+    private ConfiguredSystem? editingSystem;
+    private WorldDto? editingWorld;
+
+    private IReadOnlyList<ThemePreset> ThemePresets =>
+    [
+        .. systems.Select(s => new ThemePreset(s.System.Name, s.System.Theme)),
+        .. worlds.Select(w => new ThemePreset(w.Name, GameSystemTheme.From(w.Theme))),
+    ];
 
     protected override Task OnInitializedAsync() => ReloadAsync();
 
-    private async Task ReloadAsync() => systems = await GameSystems.GetAllAsync();
+    private async Task ReloadAsync()
+    {
+        systems = await GameSystems.GetAllAsync();
+        try
+        {
+            worlds = await Api.GetWorldsAsync();
+            worldsError = null;
+        }
+        catch (HttpRequestException ex)
+        {
+            Logger.LogWarning(ex, "Could not load worlds from the API.");
+            worldsError = "Worlds could not be loaded right now.";
+        }
+    }
 
-    private string? SystemName(string systemId) =>
-        systems.FirstOrDefault(s => s.System.Id == systemId)?.System.Name ?? Catalog.FindSystem(systemId)?.Name;
-
-    // The edit button sits beside the tile's link rather than inside it, so it doesn't open the system.
-    private RenderFragment EditableTile(ConfiguredSystem config) =>
+    private RenderFragment SystemTileWithEdit(ConfiguredSystem config) =>
         @<div class="system-tile-wrapper">
             <SystemTile Theme="config.System.Theme"
                         Name="@config.System.Name"
@@ -83,11 +132,15 @@
                         Meta="@($"{config.Tools.Count} {(config.Tools.Count == 1 ? "tool" : "tools")}")"
                         ImageUrl="@config.ImageUrl"
                         Href="@($"systems/{config.System.Id}")" />
-            <button type="button" class="system-tile-edit" title="Edit @config.System.Name" aria-label="Edit @config.System.Name"
-                    style="@config.System.Theme.ToCssVariables()" @onclick="() => editing = config">
-                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
-                    <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325" />
-                </svg>
-            </button>
+            @EditButton(config.System.Name, config.System.Theme, () => editingSystem = config)
         </div>;
+
+    // Sits beside the tile's link rather than inside it, so clicking it doesn't follow the link.
+    private RenderFragment EditButton(string name, GameSystemTheme theme, Action edit) =>
+        @<button type="button" class="system-tile-edit" title="Edit @name" aria-label="Edit @name"
+                 style="@theme.ToCssVariables()" @onclick="edit">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
+                <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325" />
+            </svg>
+        </button>;
 }

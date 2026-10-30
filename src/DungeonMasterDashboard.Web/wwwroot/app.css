@@ -133,13 +133,44 @@ h1:focus {
     margin-top: 2.5rem;
 }
 
-    .overview-section h2, .systems-page h1 {
+.overview-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--app-border);
+}
+
+    .overview-heading h2, .systems-page h1 {
         font-family: Georgia, 'Times New Roman', serif;
         font-size: 1.6rem;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid var(--app-border);
+        margin: 0;
     }
+
+.overview-add {
+    display: grid;
+    place-items: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    padding: 0;
+    color: var(--app-accent);
+    background: none;
+    border: 1px solid var(--app-border);
+    border-radius: 50%;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+    .overview-add:hover, .overview-add:focus-visible {
+        color: var(--app-accent-text);
+        background: var(--app-accent);
+        border-color: var(--app-accent);
+    }
+
+.overview-empty {
+    color: var(--app-muted);
+}
 
 .system-grid {
     display: grid;

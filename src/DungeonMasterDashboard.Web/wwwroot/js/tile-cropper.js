@@ -1,5 +1,5 @@
 // Crops an uploaded image to the shape of a tile (3:2): drag to move, slider or wheel to zoom.
-// The crop is previewed live on the preview tile and exported at a fixed size.
+// The crop is previewed live on the tile matched by previewSelector and exported at a fixed size.
 
 const OUTPUT_WIDTH = 1200;
 const OUTPUT_HEIGHT = 800;
@@ -10,9 +10,9 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 const croppers = new WeakMap();
 
-export function attach(input, frame, zoom, preview, dotnet) {
+export function attach(input, frame, zoom, previewSelector, dotnet) {
     const state = {
-        input, frame, zoom, preview, dotnet,
+        input, frame, zoom, previewSelector, dotnet,
         image: frame.querySelector('img'),
         source: null, url: null, drag: null, exported: null, previewTimer: 0,
         scale: 1, minScale: 1, x: 0, y: 0, frameWidth: 0,
@@ -123,8 +123,12 @@ export function cancel(frame) {
 
 export function clearPreview(frame) {
     const state = croppers.get(frame);
-    const layer = state?.preview.querySelector('.system-tile-image');
+    const layer = state && previewLayer(state);
     if (layer) layer.style.backgroundImage = '';
+}
+
+function previewLayer(state) {
+    return document.querySelector(`${state.previewSelector} .system-tile-image`);
 }
 
 function loadFile(state) {
@@ -209,7 +213,7 @@ function schedulePreview(state) {
     clearTimeout(state.previewTimer);
     state.previewTimer = setTimeout(() => {
         if (!state.source) return;
-        const layer = state.preview.querySelector('.system-tile-image');
+        const layer = previewLayer(state);
         if (layer) {
             const url = drawCrop(state, PREVIEW_WIDTH, PREVIEW_HEIGHT).toDataURL('image/jpeg', 0.85);
             layer.style.backgroundImage = `url("${url}")`;

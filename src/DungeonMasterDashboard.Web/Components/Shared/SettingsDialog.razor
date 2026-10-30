@@ -1,0 +1,66 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@* Modal frame for the editors: backdrop, title bar and Escape handling. The content decides
+   what closing means (e.g. asking about unsaved changes). *@
+
+<div class="settings-backdrop" @onclick="OnRequestClose"></div>
+<div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1" @ref="dialog">
+    <header class="settings-dialog-header">
+        <h2 id="settings-title">@Title</h2>
+        <button type="button" class="settings-close" aria-label="Close" @onclick="OnRequestClose">×</button>
+    </header>
+    @ChildContent
+</div>
+
+@code {
+    private ElementReference dialog;
+    private IJSObjectReference? modal;
+    private DotNetObjectReference<SettingsDialog>? selfReference;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    // The close button or a click outside the dialog.
+    [Parameter]
+    public EventCallback OnRequestClose { get; set; }
+
+    // Escape, wherever focus is on the page.
+    [Parameter]
+    public EventCallback OnEscape { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await dialog.FocusAsync();
+            selfReference = DotNetObjectReference.Create(this);
+            modal = await JS.InvokeAsync<IJSObjectReference>("import", "./js/modal.js");
+            await modal.InvokeVoidAsync("listenForEscape", selfReference);
+        }
+    }
+
+    [JSInvokable]
+    public Task Escape() => OnEscape.InvokeAsync();
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (modal is not null)
+            {
+                await modal.InvokeVoidAsync("stopListening");
+                await modal.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The browser is already gone.
+        }
+
+        selfReference?.Dispose();
+    }
+}

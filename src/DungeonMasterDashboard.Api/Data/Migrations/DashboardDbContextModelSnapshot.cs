@@ -96,6 +96,158 @@ namespace DungeonMasterDashboard.Api.Data.Migrations
 
                     b.ToTable("GameSystemSettings");
                 });
+
+            modelBuilder.Entity("DungeonMasterDashboard.Api.Worlds.World", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Accent")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AccentText")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Background")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BodyFont")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Border")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BuiltInImage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HeadingFont")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDark")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Label")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MutedText")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Surface")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tagline")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WikiSoftware")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Worlds");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Accent = "#b0263f",
+                            AccentText = "#fff3f5",
+                            Background = "#120a11",
+                            BodyFont = "Georgia, serif",
+                            Border = "#3b2337",
+                            BuiltInImage = "curse-of-strahd",
+                            HeadingFont = "'Times New Roman', Times, serif",
+                            IsDark = true,
+                            Label = "Dungeons & Dragons 5e",
+                            MutedText = "#a68fa1",
+                            Name = "Curse of Strahd",
+                            SortOrder = 1,
+                            Surface = "#1e111c",
+                            Tagline = "Gothic horror in the mist-shrouded land of Barovia.",
+                            Text = "#ecdfe8",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            WikiSoftware = "foundry-export"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Accent = "#7cc6f2",
+                            AccentText = "#07121d",
+                            Background = "#0b1622",
+                            BodyFont = "'Helvetica Neue', Arial, sans-serif",
+                            Border = "#24405e",
+                            BuiltInImage = "rime-of-the-frostmaiden",
+                            HeadingFont = "Georgia, 'Times New Roman', serif",
+                            IsDark = true,
+                            Label = "Dungeons & Dragons 5e",
+                            MutedText = "#8eaec8",
+                            Name = "Rime of the Frostmaiden",
+                            SortOrder = 2,
+                            Surface = "#122339",
+                            Tagline = "Survival under endless night in frozen Icewind Dale.",
+                            Text = "#e5f0f9",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            WikiSoftware = "foundry-export"
+                        });
+                });
+
+            modelBuilder.Entity("DungeonMasterDashboard.Api.Worlds.WorldImage", b =>
+                {
+                    b.Property<int>("WorldId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("WorldId");
+
+                    b.ToTable("WorldImages");
+                });
+
+            modelBuilder.Entity("DungeonMasterDashboard.Api.Worlds.WorldImage", b =>
+                {
+                    b.HasOne("DungeonMasterDashboard.Api.Worlds.World", null)
+                        .WithOne()
+                        .HasForeignKey("DungeonMasterDashboard.Api.Worlds.WorldImage", "WorldId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
 #pragma warning restore 612, 618
         }
     }

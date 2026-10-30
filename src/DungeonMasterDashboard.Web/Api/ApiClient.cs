@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using DungeonMasterDashboard.Contracts;
 using DungeonMasterDashboard.Contracts.GameSystems;
+using DungeonMasterDashboard.Contracts.Worlds;
 
 namespace DungeonMasterDashboard.Web.Api;
 
@@ -54,34 +55,79 @@ public sealed class ApiClient(
     }
 
     // Removes all saved changes for the system, including its uploaded image.
-    public async Task ResetSystemSettingsAsync(string systemId, CancellationToken cancellationToken = default)
+    public Task ResetSystemSettingsAsync(string systemId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Delete, $"api/systems/{Uri.EscapeDataString(systemId)}/settings", cancellationToken);
+
+    public Task UploadSystemImageAsync(string systemId, byte[] data, string contentType, CancellationToken cancellationToken = default) =>
+        UploadImageAsync($"api/systems/{Uri.EscapeDataString(systemId)}/image", data, contentType, cancellationToken);
+
+    public Task DeleteSystemImageAsync(string systemId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Delete, $"api/systems/{Uri.EscapeDataString(systemId)}/image", cancellationToken);
+
+    // Null when the system has no uploaded image.
+    public Task<(byte[] Data, string ContentType)?> GetSystemImageAsync(
+        string systemId, ClaimsPrincipal user, CancellationToken cancellationToken = default) =>
+        GetImageAsync($"api/systems/{Uri.EscapeDataString(systemId)}/image", user, cancellationToken);
+
+    public async Task<IReadOnlyList<WorldDto>> GetWorldsAsync(CancellationToken cancellationToken = default)
     {
-        using var request = await CreateRequestAsync(HttpMethod.Delete, $"api/systems/{Uri.EscapeDataString(systemId)}/settings");
+        using var request = await CreateRequestAsync(HttpMethod.Get, "api/worlds");
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<List<WorldDto>>(cancellationToken) ?? [];
+    }
+
+    public async Task<WorldDto> CreateWorldAsync(WorldDto world, CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateRequestAsync(HttpMethod.Post, "api/worlds");
+        request.Content = JsonContent.Create(world);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<WorldDto>(cancellationToken)
+            ?? throw new HttpRequestException("The API returned no world.");
+    }
+
+    public async Task UpdateWorldAsync(int worldId, WorldDto world, CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateRequestAsync(HttpMethod.Put, $"api/worlds/{worldId}");
+        request.Content = JsonContent.Create(world);
         using var response = await httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
-    public async Task UploadSystemImageAsync(string systemId, byte[] data, string contentType, CancellationToken cancellationToken = default)
+    public Task DeleteWorldAsync(int worldId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Delete, $"api/worlds/{worldId}", cancellationToken);
+
+    public Task UploadWorldImageAsync(int worldId, byte[] data, string contentType, CancellationToken cancellationToken = default) =>
+        UploadImageAsync($"api/worlds/{worldId}/image", data, contentType, cancellationToken);
+
+    public Task DeleteWorldImageAsync(int worldId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Delete, $"api/worlds/{worldId}/image", cancellationToken);
+
+    // Null when the world has no uploaded image.
+    public Task<(byte[] Data, string ContentType)?> GetWorldImageAsync(
+        int worldId, ClaimsPrincipal user, CancellationToken cancellationToken = default) =>
+        GetImageAsync($"api/worlds/{worldId}/image", user, cancellationToken);
+
+    private async Task SendAsync(HttpMethod method, string requestUri, CancellationToken cancellationToken)
     {
-        using var request = await CreateRequestAsync(HttpMethod.Put, $"api/systems/{Uri.EscapeDataString(systemId)}/image");
+        using var request = await CreateRequestAsync(method, requestUri);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    private async Task UploadImageAsync(string requestUri, byte[] data, string contentType, CancellationToken cancellationToken)
+    {
+        using var request = await CreateRequestAsync(HttpMethod.Put, requestUri);
         request.Content = new ByteArrayContent(data);
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         using var response = await httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
-    public async Task DeleteSystemImageAsync(string systemId, CancellationToken cancellationToken = default)
+    private async Task<(byte[] Data, string ContentType)?> GetImageAsync(string requestUri, ClaimsPrincipal user, CancellationToken cancellationToken)
     {
-        using var request = await CreateRequestAsync(HttpMethod.Delete, $"api/systems/{Uri.EscapeDataString(systemId)}/image");
-        using var response = await httpClient.SendAsync(request, cancellationToken);
-        await EnsureSuccessAsync(response, cancellationToken);
-    }
-
-    // Null when the system has no uploaded image.
-    public async Task<(byte[] Data, string ContentType)?> GetSystemImageAsync(
-        string systemId, ClaimsPrincipal user, CancellationToken cancellationToken = default)
-    {
-        using var request = CreateRequest(HttpMethod.Get, $"api/systems/{Uri.EscapeDataString(systemId)}/image", user);
+        using var request = CreateRequest(HttpMethod.Get, requestUri, user);
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {

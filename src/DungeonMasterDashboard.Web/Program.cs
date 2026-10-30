@@ -8,6 +8,7 @@ using DungeonMasterDashboard.Web.Components;
 using DungeonMasterDashboard.Web.Components.Account;
 using DungeonMasterDashboard.Web.Data;
 using DungeonMasterDashboard.Web.GameSystems;
+using DungeonMasterDashboard.Web.Worlds;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -98,5 +99,6 @@ app.MapAdditionalIdentityEndpoints();
 
 app.MapTileImages();
 app.MapSystemImages();
+app.MapWorldImages();
 
 app.Run();

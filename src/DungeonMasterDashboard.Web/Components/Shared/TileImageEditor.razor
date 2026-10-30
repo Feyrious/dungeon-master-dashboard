@@ -1,0 +1,206 @@
+@using DungeonMasterDashboard.Contracts
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@* Upload a tile image and crop it to the tile's shape. The crop is previewed on the tile
+   matched by PreviewSelector; the result is reported through Value until the editor saves. *@
+
+<div class="settings-image-actions">
+    <label class="btn btn-outline-secondary btn-sm mb-0">
+        Upload image…
+        <input type="file" class="visually-hidden" accept="image/png,image/jpeg,image/webp" @ref="fileInput" />
+    </label>
+    @if (Value is TileImageChange.Upload || (HasUploadedImage && Value is not TileImageChange.Remove))
+    {
+        <button type="button" class="btn btn-link btn-sm" @onclick="UseDefaultImageAsync">Use default image</button>
+    }
+    else if (Value is TileImageChange.Remove)
+    {
+        <button type="button" class="btn btn-link btn-sm" @onclick="() => SetValueAsync(TileImageChange.None)">Keep uploaded image</button>
+    }
+</div>
+<p class="form-text mb-0">@Status</p>
+
+@* Always rendered so the cropper script keeps its elements; hidden until an image is chosen. *@
+<div class="cropper @(cropping ? null : "d-none")">
+    <div class="cropper-frame" @ref="cropFrame"><img alt="" draggable="false" /></div>
+    <label class="cropper-zoom">
+        <span>Zoom</span>
+        <input type="range" class="form-range" min="1" max="4" step="0.01" value="1" @ref="zoomInput" />
+    </label>
+    <p class="form-text">Drag the image to choose what shows. The frame has the shape of the tile; the bottom is darkened behind the text.</p>
+    <div class="settings-image-actions">
+        <button type="button" class="btn btn-primary btn-sm" disabled="@applying" @onclick="ApplyCropAsync">Use this crop</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelCropAsync">Cancel</button>
+    </div>
+</div>
+@if (error is not null)
+{
+    <p class="text-danger small mt-2 mb-0" role="alert">@error</p>
+}
+
+@code {
+    private ElementReference fileInput;
+    private ElementReference cropFrame;
+    private ElementReference zoomInput;
+    private IJSObjectReference? cropper;
+    private DotNetObjectReference<TileImageEditor>? selfReference;
+    private bool cropping;
+    private bool fitPending;
+    private bool applying;
+    private string? error;
+
+    // CSS selector of the tile that previews the crop.
+    [Parameter, EditorRequired]
+    public string PreviewSelector { get; set; } = "";
+
+    // Whether a previously uploaded image is saved for this tile.
+    [Parameter]
+    public bool HasUploadedImage { get; set; }
+
+    [Parameter]
+    public TileImageChange Value { get; set; } = TileImageChange.None;
+
+    [Parameter]
+    public EventCallback<TileImageChange> ValueChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> CroppingChanged { get; set; }
+
+    public bool IsCropping => cropping;
+
+    private string Status => Value switch
+    {
+        TileImageChange.Upload => "New image ready. It's saved when you press Save.",
+        TileImageChange.Remove => "The default image will be used after saving.",
+        _ when HasUploadedImage => "Using an uploaded image.",
+        _ => "Using the default image. Upload one to replace it; you can crop and zoom it to fit the tile.",
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            selfReference = DotNetObjectReference.Create(this);
+            cropper = await JS.InvokeAsync<IJSObjectReference>("import", "./js/tile-cropper.js");
+            await cropper.InvokeVoidAsync("attach", fileInput, cropFrame, zoomInput, PreviewSelector, selfReference);
+        }
+
+        // The crop frame only has a size once it's visible.
+        if (fitPending && cropper is not null)
+        {
+            fitPending = false;
+            await cropper.InvokeVoidAsync("fit", cropFrame);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnImageLoaded()
+    {
+        error = null;
+        fitPending = true;
+        await SetCroppingAsync(true);
+        // A new crop replaces an earlier one that wasn't saved yet.
+        await SetValueAsync(TileImageChange.None);
+    }
+
+    [JSInvokable]
+    public Task OnCropError(string message)
+    {
+        error = message;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public async Task CancelCropAsync()
+    {
+        if (cropper is not null)
+        {
+            await cropper.InvokeVoidAsync("cancel", cropFrame);
+        }
+
+        await SetCroppingAsync(false);
+    }
+
+    // Puts the preview back to the saved image, e.g. after the editor was reset.
+    public async Task ClearPreviewAsync()
+    {
+        if (cropper is not null)
+        {
+            await cropper.InvokeVoidAsync("clearPreview", cropFrame);
+        }
+    }
+
+    private async Task ApplyCropAsync()
+    {
+        if (cropper is null)
+        {
+            return;
+        }
+
+        applying = true;
+        try
+        {
+            var contentType = await cropper.InvokeAsync<string?>("exportCrop", cropFrame);
+            if (contentType is null || !SettingsLimits.ImageContentTypes.Contains(contentType))
+            {
+                error = "The image could not be cropped in this browser.";
+                return;
+            }
+
+            var stream = await cropper.InvokeAsync<IJSStreamReference>("takeExport", cropFrame);
+            await using var data = await stream.OpenReadStreamAsync(SettingsLimits.ImageMaxBytes);
+            using var buffer = new MemoryStream();
+            await data.CopyToAsync(buffer);
+
+            error = null;
+            await cropper.InvokeVoidAsync("finish", cropFrame);
+            await SetCroppingAsync(false);
+            await SetValueAsync(new TileImageChange.Upload(buffer.ToArray(), contentType));
+        }
+        catch (IOException)
+        {
+            error = "The cropped image is too large. Try zooming in a little.";
+        }
+        finally
+        {
+            applying = false;
+        }
+    }
+
+    private async Task UseDefaultImageAsync()
+    {
+        await ClearPreviewAsync();
+        await SetValueAsync(HasUploadedImage ? TileImageChange.RemoveUploaded : TileImageChange.None);
+    }
+
+    private async Task SetValueAsync(TileImageChange value)
+    {
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    private async Task SetCroppingAsync(bool value)
+    {
+        cropping = value;
+        await CroppingChanged.InvokeAsync(value);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (cropper is not null)
+            {
+                await cropper.InvokeVoidAsync("detach", cropFrame);
+                await cropper.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The browser is already gone.
+        }
+
+        selfReference?.Dispose();
+    }
+}

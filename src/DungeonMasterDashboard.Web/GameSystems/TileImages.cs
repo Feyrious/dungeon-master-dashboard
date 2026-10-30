@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.StaticFiles;
 
 namespace DungeonMasterDashboard.Web.GameSystems;
 
-// Picks the background image for a world or game system tile. An image dropped into the
-// folder configured as TileImages:Path (named after the tile's id, e.g. curse-of-strahd.jpg)
+// Picks the default background image for a game system tile. An image dropped into the
+// folder configured as TileImages:Path (named after the system's id, e.g. dnd5e.jpg)
 // replaces the built-in illustration in wwwroot/img/tiles. Those custom images may be
 // publisher art, so they are served only to signed-in users (see MapTileImages).
 public sealed class TileImages(IConfiguration configuration, IWebHostEnvironment environment, GameSystemCatalog catalog)
@@ -36,8 +36,7 @@ public sealed class TileImages(IConfiguration configuration, IWebHostEnvironment
     public static string ContentTypeFor(FileInfo file) =>
         ContentTypes.TryGetContentType(file.Name, out var contentType) ? contentType : "application/octet-stream";
 
-    private bool IsKnownTile(string tileId) =>
-        catalog.Systems.Any(s => s.Id == tileId) || catalog.Worlds.Any(w => w.Id == tileId);
+    private bool IsKnownTile(string tileId) => catalog.Systems.Any(s => s.Id == tileId);
 }
 
 internal static class TileImagesEndpointRouteBuilderExtensions

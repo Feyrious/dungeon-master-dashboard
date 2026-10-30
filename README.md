@@ -20,9 +20,9 @@ signed with `API_SIGNING_KEY`, and the API rejects any request without a valid o
 
 ## Worlds, game systems and tools
 
-After signing in, the overview shows **Worlds** (campaign journals exported from
-Foundry VTT, opened in a new tab) and **Tools** (one tile per game system). Picking a
-game system lists its tools in a side menu. A tool can
+After signing in, the overview shows **Worlds** (links to each campaign's wiki, opened in
+a new tab) and **Tools** (one tile per game system). Picking a game system lists its tools
+in a side menu. A tool can
 belong to several systems and receives the system it was opened from, so it can adapt
 (e.g. name lists per setting). Everything is registered in
 `src/DungeonMasterDashboard.Web/GameSystems/GameSystemCatalog.cs`.
@@ -34,11 +34,20 @@ belong to several systems and receives the system it was opened from, so it can 
   description, icon and `AvailableIn` (`ToolAvailability.AllSystems` or
   `ToolAvailability.Only(...)`). Add the `Definition` to the `tools` list in the catalog.
   It appears at `/systems/{system}/{tool}`.
-- **Add a world:** copy a file in `GameSystems/Worlds/`, give it a new id, name, tagline,
-  game system and theme, and add its `Definition` to the `worlds` list in the catalog.
-  Its address goes in `worlds.env` as `Worlds__{id}__Url=` (see `worlds.env.example`).
 
 The catalog checks on startup that ids are unique and only refer to existing systems.
+
+### Worlds
+
+Worlds are managed on the overview: **+** next to the "Worlds" heading adds one, the pencil
+on a world tile edits or deletes it. A world links to its wiki at any address (Foundry VTT
+journal export, World Anvil, Kanka, LegendKeeper, Obsidian Publish, Notion, MediaWiki, …);
+the chosen wiki software only sets the link text. Like game systems, a world has a tile
+image (upload and crop) and a theme, which can be copied from any system or world. Worlds
+are stored by the Web API (`api-data` volume).
+
+Older setups kept world links in `worlds.env`; the API copies those into the two worlds the
+app came with on startup if they have no link yet, after which the file can be removed.
 
 ### Editing a game system
 
@@ -50,12 +59,12 @@ database (`api-data` volume); "Reset to defaults" removes them again.
 
 ### Tile images
 
-Each world and game system tile has an original illustration in
-`src/DungeonMasterDashboard.Web/wwwroot/img/tiles/{id}.svg` (add one for a new tile). To use
-your own image instead, e.g. cover art from a book you own, drop it into `tile-images/` named
-after the tile's id (see `tile-images/README.md`). Those images are git-ignored and only
-served to signed-in users. An image uploaded in a game system's settings takes precedence
-over both.
+Each game system tile has an original illustration in
+`src/DungeonMasterDashboard.Web/wwwroot/img/tiles/{id}.svg` (add one for a new system); new
+worlds start with `world.svg`. The easiest way to use your own image is uploading it in the
+tile's settings. For game systems you can alternatively drop an image into `tile-images/`
+named after the system's id (see `tile-images/README.md`); those are git-ignored and only
+served to signed-in users. An uploaded image takes precedence.
 
 ## Running with Docker
 
@@ -71,8 +80,6 @@ over both.
    cp users.env.example users.env
    ```
 
-   Optionally create `worlds.env` the same way from `worlds.env.example` and fill in the
-   addresses of your exported Foundry VTT journals.
 
 3. Build and start:
 

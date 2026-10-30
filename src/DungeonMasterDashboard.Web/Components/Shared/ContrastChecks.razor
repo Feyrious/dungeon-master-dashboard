@@ -1,0 +1,29 @@
+@* Warns when theme colors are hard to read together (WCAG ratio below 4.5:1). *@
+
+<ul class="settings-contrast">
+    @foreach (var (label, ratio) in Checks)
+    {
+        var ok = ratio >= ColorContrast.Readable;
+        <li class="@(ok ? "ok" : "low")">
+            <span aria-hidden="true">@(ok ? "✓" : "⚠")</span>
+            @label <span class="settings-contrast-ratio">@ratio.ToString("0.0"):1@(ok ? "" : " – hard to read")</span>
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired]
+    public GameSystemTheme Theme { get; set; } = default!;
+
+    // What the small accent-colored line on the tile is called (e.g. "Tool count", "Link").
+    [Parameter]
+    public string MetaLabel { get; set; } = "Tool count";
+
+    private IEnumerable<(string Label, double Ratio)> Checks =>
+    [
+        ("Text on background", ColorContrast.Ratio(Theme.Text, Theme.Background)),
+        ("Muted text on background", ColorContrast.Ratio(Theme.MutedText, Theme.Background)),
+        ($"{MetaLabel} on tile", ColorContrast.Ratio(ColorContrast.Mix(Theme.Accent, Theme.Text, 0.6), Theme.Background)),
+        ("Text on accent", ColorContrast.Ratio(Theme.AccentText, Theme.Accent)),
+    ];
+}
