@@ -1,19 +1,56 @@
 @page "/systems"
 @inject GameSystemCatalog Catalog
+@inject IConfiguration Configuration
 
-<PageTitle>Game systems · Dungeon Master Dashboard</PageTitle>
+<PageTitle>Dungeon Master Dashboard</PageTitle>
 
 <div class="systems-page">
-    <h1>Choose a game system</h1>
-    <div class="system-grid">
-        @foreach (var system in Catalog.Systems)
-        {
-            var toolCount = Catalog.ToolsFor(system).Count;
-            <a class="system-tile" href="systems/@system.Id" style="@system.Theme.ToCssVariables()">
-                <span class="system-tile-name">@system.Name</span>
-                <span class="system-tile-tagline">@system.Tagline</span>
-                <span class="system-tile-meta">@toolCount @(toolCount == 1 ? "tool" : "tools")</span>
-            </a>
-        }
-    </div>
+    <h1 class="visually-hidden">Dungeon Master Dashboard</h1>
+
+    @if (Catalog.Worlds.Count > 0)
+    {
+        <section class="overview-section" aria-labelledby="worlds-heading">
+            <h2 id="worlds-heading">Worlds</h2>
+            <div class="system-grid">
+                @foreach (var world in Catalog.Worlds)
+                {
+                    var url = Configuration[$"Worlds:{world.Id}:Url"];
+                    var systemName = Catalog.FindSystem(world.SystemId)?.Name;
+                    @if (string.IsNullOrWhiteSpace(url))
+                    {
+                        <div class="system-tile system-tile-disabled" style="@world.Theme.ToCssVariables()">
+                            <span class="system-tile-label">@systemName</span>
+                            <span class="system-tile-name">@world.Name</span>
+                            <span class="system-tile-tagline">@world.Tagline</span>
+                            <span class="system-tile-meta">Link not set yet</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <a class="system-tile" href="@url" target="_blank" rel="noopener noreferrer" style="@world.Theme.ToCssVariables()">
+                            <span class="system-tile-label">@systemName</span>
+                            <span class="system-tile-name">@world.Name</span>
+                            <span class="system-tile-tagline">@world.Tagline</span>
+                            <span class="system-tile-meta">Open journals ↗</span>
+                        </a>
+                    }
+                }
+            </div>
+        </section>
+    }
+
+    <section class="overview-section" aria-labelledby="tools-heading">
+        <h2 id="tools-heading">Tools</h2>
+        <div class="system-grid">
+            @foreach (var system in Catalog.Systems)
+            {
+                var toolCount = Catalog.ToolsFor(system).Count;
+                <a class="system-tile" href="systems/@system.Id" style="@system.Theme.ToCssVariables()">
+                    <span class="system-tile-name">@system.Name</span>
+                    <span class="system-tile-tagline">@system.Tagline</span>
+                    <span class="system-tile-meta">@toolCount @(toolCount == 1 ? "tool" : "tools")</span>
+                </a>
+            }
+        </div>
+    </section>
 </div>

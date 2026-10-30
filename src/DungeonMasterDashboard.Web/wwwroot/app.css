@@ -125,10 +125,16 @@ h1:focus {
     margin: 0 auto;
 }
 
-    .systems-page h1 {
+.overview-section + .overview-section {
+    margin-top: 2.5rem;
+}
+
+    .overview-section h2, .systems-page h1 {
         font-family: Georgia, 'Times New Roman', serif;
-        font-size: 2rem;
-        margin-bottom: 1.5rem;
+        font-size: 1.6rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--app-border);
     }
 
 .system-grid {
@@ -163,6 +169,23 @@ h1:focus {
         outline: 2px solid var(--sys-accent);
         outline-offset: 2px;
     }
+
+.system-tile-disabled {
+    cursor: default;
+    opacity: 0.75;
+}
+
+    .system-tile-disabled:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+.system-tile-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sys-muted);
+}
 
 .system-tile-name {
     font-family: var(--sys-heading-font);

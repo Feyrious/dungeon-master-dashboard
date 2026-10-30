@@ -11,7 +11,7 @@
 
     <div class="system-shell" data-bs-theme="@system.Theme.BootstrapTheme" style="@system.Theme.ToCssVariables()">
         <aside class="system-sidebar">
-            <a class="system-back" href="systems">← All game systems</a>
+            <a class="system-back" href="systems">← Overview</a>
             <NavLink class="system-title" href="@($"systems/{system.Id}")" Match="NavLinkMatch.All">@system.Name</NavLink>
             <nav class="tool-nav" aria-label="Tools">
                 @foreach (var item in tools)

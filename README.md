@@ -18,9 +18,11 @@ change their password and enable two-factor authentication or passkeys under the
 The Web API is not exposed outside Docker. The frontend calls it with a short-lived token
 signed with `API_SIGNING_KEY`, and the API rejects any request without a valid one.
 
-## Game systems and tools
+## Worlds, game systems and tools
 
-After signing in you pick a game system; its tools are listed in a side menu. A tool can
+After signing in, the overview shows **Worlds** (campaign journals exported from
+Foundry VTT, opened in a new tab) and **Tools** (one tile per game system). Picking a
+game system lists its tools in a side menu. A tool can
 belong to several systems and receives the system it was opened from, so it can adapt
 (e.g. name lists per setting). Everything is registered in
 `src/DungeonMasterDashboard.Web/GameSystems/GameSystemCatalog.cs`.
@@ -33,7 +35,11 @@ belong to several systems and receives the system it was opened from, so it can 
   `ToolAvailability.Only(...)`). Add the `Definition` to the `tools` list in the catalog.
   It appears at `/systems/{system}/{tool}`.
 
-The catalog checks on startup that tool ids are unique and only refer to existing systems.
+- **Add a world:** copy a file in `GameSystems/Worlds/`, give it a new id, name, tagline,
+  game system and theme, and add its `Definition` to the `worlds` list in the catalog.
+  Its address goes in `worlds.env` as `Worlds__{id}__Url=` (see `worlds.env.example`).
+
+The catalog checks on startup that ids are unique and only refer to existing systems.
 
 ## Running with Docker
 
@@ -48,6 +54,9 @@ The catalog checks on startup that tool ids are unique and only refer to existin
    ```bash
    cp users.env.example users.env
    ```
+
+   Optionally create `worlds.env` the same way from `worlds.env.example` and fill in the
+   addresses of your exported Foundry VTT journals.
 
 3. Build and start:
 

@@ -16,6 +16,8 @@ services:
     env_file:
       - path: users.env
         required: false
+      - path: worlds.env
+        required: false
     volumes:
       - web-data:/app/data
     # Bound to localhost only: reachable by cloudflared on this host, not from the LAN.
