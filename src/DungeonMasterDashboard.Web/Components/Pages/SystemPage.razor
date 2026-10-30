@@ -1,0 +1,93 @@
+@page "/systems/{SystemId}"
+@page "/systems/{SystemId}/{ToolId}"
+@layout BareLayout
+@rendermode InteractiveServer
+@inject GameSystemCatalog Catalog
+@inject NavigationManager NavigationManager
+
+@if (system is not null)
+{
+    <PageTitle>@(tool is null ? system.Name : $"{tool.Name} · {system.Name}")</PageTitle>
+
+    <div class="system-shell" data-bs-theme="@system.Theme.BootstrapTheme" style="@system.Theme.ToCssVariables()">
+        <aside class="system-sidebar">
+            <a class="system-back" href="systems">← All game systems</a>
+            <NavLink class="system-title" href="@($"systems/{system.Id}")" Match="NavLinkMatch.All">@system.Name</NavLink>
+            <nav class="tool-nav" aria-label="Tools">
+                @foreach (var item in tools)
+                {
+                    <NavLink class="tool-link" href="@($"systems/{system.Id}/{item.Id}")">
+                        <span class="tool-icon" aria-hidden="true">@item.Icon</span>
+                        <span>@item.Name</span>
+                    </NavLink>
+                }
+            </nav>
+            <UserMenu Class="user-menu-sidebar" />
+        </aside>
+
+        <main class="system-main">
+            @if (tool is null)
+            {
+                <header class="system-header">
+                    <h1>@system.Name</h1>
+                    <p>@system.Tagline</p>
+                </header>
+                @if (tools.Count == 0)
+                {
+                    <p class="system-empty">No tools have been added to this game system yet.</p>
+                }
+                else
+                {
+                    <div class="tool-grid">
+                        @foreach (var item in tools)
+                        {
+                            <a class="tool-card" href="@($"systems/{system.Id}/{item.Id}")">
+                                <span class="tool-card-icon" aria-hidden="true">@item.Icon</span>
+                                <span class="tool-card-name">@item.Name</span>
+                                <span class="tool-card-description">@item.Description</span>
+                            </a>
+                        }
+                    </div>
+                }
+            }
+            else
+            {
+                <header class="system-header">
+                    <h1><span aria-hidden="true">@tool.Icon</span> @tool.Name</h1>
+                    <p>@tool.Description</p>
+                </header>
+                <DynamicComponent @key="tool.Id" Type="tool.Component" Parameters="toolParameters" />
+            }
+        </main>
+    </div>
+}
+
+@code {
+    private GameSystem? system;
+    private ToolDefinition? tool;
+    private IReadOnlyList<ToolDefinition> tools = [];
+    private Dictionary<string, object> toolParameters = [];
+
+    [Parameter]
+    public string SystemId { get; set; } = "";
+
+    [Parameter]
+    public string? ToolId { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        system = Catalog.FindSystem(SystemId);
+        tool = system is not null && ToolId is not null ? Catalog.FindTool(system, ToolId) : null;
+
+        // Unknown system, or a tool that isn't part of this system.
+        if (system is null || (ToolId is not null && tool is null))
+        {
+            system = null;
+            NavigationManager.NotFound();
+            return;
+        }
+
+        tools = Catalog.ToolsFor(system);
+        toolParameters = new() { [nameof(Tools.ToolBase.System)] = system };
+    }
+}

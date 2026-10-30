@@ -1,4 +1,5 @@
-﻿@page "/Account/Login"
+﻿@page "/"
+@page "/Account/Login"
 
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authentication
@@ -11,46 +12,37 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 
-<PageTitle>Log in</PageTitle>
+<PageTitle>Sign in · Dungeon Master Dashboard</PageTitle>
 
-<h1>Log in</h1>
-<div class="row">
-    <div class="col-lg-6">
-        <section>
-            <StatusMessage Message="@errorMessage" />
-            <EditForm EditContext="editContext" method="post" OnSubmit="LoginUser" FormName="login">
-                <DataAnnotationsValidator />
-                <ValidationSummary class="text-danger" role="alert" />
-                <div class="form-floating mb-3">
-                    <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username webauthn" aria-required="true" placeholder="name@example.com" />
-                    <label for="Input.Email" class="form-label">Email</label>
-                    <ValidationMessage For="() => Input.Email" class="text-danger" />
-                </div>
-                <div class="form-floating mb-3">
-                    <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
-                    <label for="Input.Password" class="form-label">Password</label>
-                    <ValidationMessage For="() => Input.Password" class="text-danger" />
-                </div>
-                <div class="checkbox mb-3">
-                    <label class="form-label">
-                        <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
-                        Remember me
-                    </label>
-                </div>
-                <div>
-                    <button type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
-                </div>
-                <hr />
-                <div class="d-flex flex-column">
-                    <span class="text-secondary mx-auto mt-2">OR</span>
-                    <PasskeySubmit Operation="PasskeyOperation.Request" Name="Input.Passkey" EmailName="Input.Email" class="btn btn-link mx-auto">Log in with a passkey</PasskeySubmit>
-                </div>
-            </EditForm>
-        </section>
+<h1>Sign in</h1>
+<StatusMessage Message="@errorMessage" />
+<EditForm EditContext="editContext" method="post" OnSubmit="LoginUser" FormName="login">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" role="alert" />
+    <div class="form-floating mb-3">
+        <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username webauthn" aria-required="true" placeholder="name@example.com" />
+        <label for="Input.Email" class="form-label">Email</label>
+        <ValidationMessage For="() => Input.Email" class="text-danger" />
     </div>
-</div>
+    <div class="form-floating mb-3">
+        <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+        <label for="Input.Password" class="form-label">Password</label>
+        <ValidationMessage For="() => Input.Password" class="text-danger" />
+    </div>
+    <div class="checkbox mb-3">
+        <label class="form-label">
+            <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
+            Remember me
+        </label>
+    </div>
+    <button type="submit" class="w-100 btn btn-lg btn-primary">Sign in</button>
+    <div class="auth-divider"><span>or</span></div>
+    <PasskeySubmit Operation="PasskeyOperation.Request" Name="Input.Passkey" EmailName="Input.Email" class="btn btn-link w-100">Sign in with a passkey</PasskeySubmit>
+</EditForm>
 
 @code {
+    private const string DefaultReturnUrl = "systems";
+
     private string? errorMessage;
     private EditContext editContext = default!;
 
@@ -71,6 +63,13 @@
 
         if (HttpMethods.IsGet(HttpContext.Request.Method))
         {
+            // The login page is the site's landing page; signed-in users go straight on.
+            if (HttpContext.User.Identity?.IsAuthenticated == true)
+            {
+                RedirectManager.RedirectTo(ReturnUrl ?? DefaultReturnUrl);
+                return;
+            }
+
             // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
         }
@@ -105,7 +104,7 @@
         if (result.Succeeded)
         {
             Logger.LogInformation("User logged in.");
-            RedirectManager.RedirectTo(ReturnUrl);
+            RedirectManager.RedirectTo(ReturnUrl ?? DefaultReturnUrl);
         }
         else if (result.RequiresTwoFactor)
         {

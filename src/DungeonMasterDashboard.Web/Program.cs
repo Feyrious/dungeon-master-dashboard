@@ -7,6 +7,7 @@ using DungeonMasterDashboard.Web.Auth;
 using DungeonMasterDashboard.Web.Components;
 using DungeonMasterDashboard.Web.Components.Account;
 using DungeonMasterDashboard.Web.Data;
+using DungeonMasterDashboard.Web.GameSystems;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +53,7 @@ if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath
         .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 }
 
+builder.Services.AddSingleton(GameSystemCatalog.Default);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<ApiTokenService>();
 builder.Services.AddHttpClient<ApiClient>(client =>

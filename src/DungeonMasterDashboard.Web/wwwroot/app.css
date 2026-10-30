@@ -1,23 +1,42 @@
+/* Neutral shell: login, game system grid and account pages.
+   Game system pages override these with their own theme (--sys-* variables). */
+:root {
+    --app-bg: #111317;
+    --app-surface: #1a1d23;
+    --app-surface-raised: #22262e;
+    --app-text: #e6e8eb;
+    --app-muted: #9aa3ad;
+    --app-accent: #d4a24c;
+    --app-accent-text: #15120c;
+    --app-border: #2c313a;
+    --app-radius: 12px;
+}
+
 html, body {
+    min-height: 100%;
+    background: var(--app-bg);
+    color: var(--app-text);
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: var(--app-accent);
 }
 
 .btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    color: var(--app-accent-text);
+    background-color: var(--app-accent);
+    border-color: var(--app-accent);
 }
+
+    .btn-primary:hover, .btn-primary:focus {
+        color: var(--app-accent-text);
+        background-color: #e0b464;
+        border-color: #e0b464;
+    }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-.content {
-    padding-top: 1.1rem;
+    box-shadow: 0 0 0 0.1rem var(--app-bg), 0 0 0 0.25rem var(--app-accent);
 }
 
 h1:focus {
@@ -33,8 +52,486 @@ h1:focus {
 }
 
 .validation-message {
-    color: #e50000;
+    color: #ff6b6b;
 }
+
+/* ---------- Login and other auth pages: one card covering the page ---------- */
+
+.auth-page {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem 1rem;
+    background:
+        radial-gradient(ellipse at top, rgba(212, 162, 76, 0.12), transparent 60%),
+        var(--app-bg);
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 2.25rem 2rem;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+    .auth-card h1 {
+        font-size: 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    /* Template auth pages use Bootstrap columns; inside the card they should be full width. */
+    .auth-card .row > [class*="col-"] {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+.auth-brand {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--app-accent);
+    margin-bottom: 0.5rem;
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.25rem 0 0.5rem;
+    color: var(--app-muted);
+    font-size: 0.85rem;
+}
+
+    .auth-divider::before, .auth-divider::after {
+        content: "";
+        flex: 1;
+        border-top: 1px solid var(--app-border);
+    }
+
+/* ---------- Shell: game system grid and account pages ---------- */
+
+.shell {
+    position: relative;
+    min-height: 100vh;
+    padding: 4.5rem 1rem 2rem;
+}
+
+.systems-page, .manage-page {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+    .systems-page h1 {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
+    }
+
+.system-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    gap: 1rem;
+}
+
+/* Each tile previews its system's theme. */
+.system-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-height: 170px;
+    padding: 1.4rem;
+    color: var(--sys-text);
+    text-decoration: none;
+    background: var(--sys-bg);
+    border: 1px solid var(--sys-border);
+    border-top: 4px solid var(--sys-accent);
+    border-radius: var(--app-radius);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+    .system-tile:hover, .system-tile:focus-visible {
+        color: var(--sys-text);
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .system-tile:focus-visible {
+        outline: 2px solid var(--sys-accent);
+        outline-offset: 2px;
+    }
+
+.system-tile-name {
+    font-family: var(--sys-heading-font);
+    font-size: 1.35rem;
+    font-weight: 600;
+}
+
+.system-tile-tagline {
+    font-family: var(--sys-body-font);
+    color: var(--sys-muted);
+}
+
+.system-tile-meta {
+    margin-top: auto;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--sys-accent);
+}
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    text-decoration: none;
+}
+
+.manage-page h1 {
+    margin-bottom: 1.5rem;
+}
+
+.manage-page .nav-pills {
+    --bs-nav-link-color: var(--app-text);
+    --bs-nav-link-hover-color: var(--app-accent);
+    --bs-nav-pills-link-active-bg: var(--app-accent);
+    --bs-nav-pills-link-active-color: var(--app-accent-text);
+    margin-bottom: 1.5rem;
+}
+
+/* ---------- Account menu ---------- */
+
+.user-menu {
+    position: relative;
+    font-size: 0.9rem;
+}
+
+    .user-menu summary {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        list-style: none;
+        cursor: pointer;
+        padding: 0.3rem 0.6rem 0.3rem 0.3rem;
+        border-radius: 999px;
+        color: inherit;
+    }
+
+        .user-menu summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .user-menu summary:hover, .user-menu[open] summary {
+            background: rgba(127, 127, 127, 0.15);
+        }
+
+.user-menu-avatar {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    font-weight: 700;
+    background: var(--sys-accent, var(--app-accent));
+    color: var(--sys-accent-text, var(--app-accent-text));
+}
+
+.user-menu-name {
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-menu-panel {
+    position: absolute;
+    z-index: 10;
+    min-width: 12rem;
+    padding: 0.4rem;
+    background: var(--sys-surface, var(--app-surface-raised));
+    border: 1px solid var(--sys-border, var(--app-border));
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+    .user-menu-panel a, .user-menu-panel button,
+    .system-shell .user-menu-panel a {
+        display: block;
+        width: 100%;
+        padding: 0.45rem 0.7rem;
+        text-align: left;
+        text-decoration: none;
+        color: var(--sys-text, var(--app-text));
+        background: none;
+        border: 0;
+        border-radius: 6px;
+        font: inherit;
+    }
+
+        .user-menu-panel a:hover, .user-menu-panel button:hover {
+            background: rgba(127, 127, 127, 0.15);
+        }
+
+    .user-menu-panel form {
+        margin: 0;
+    }
+
+.user-menu-corner {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+}
+
+    .user-menu-corner .user-menu-panel {
+        right: 0;
+        top: calc(100% + 0.4rem);
+    }
+
+.user-menu-sidebar {
+    margin-top: auto;
+}
+
+    .user-menu-sidebar .user-menu-panel {
+        left: 0;
+        bottom: calc(100% + 0.4rem);
+    }
+
+/* ---------- Game system pages ---------- */
+
+.system-shell {
+    display: flex;
+    min-height: 100vh;
+    background: var(--sys-bg);
+    color: var(--sys-text);
+    font-family: var(--sys-body-font);
+    --bs-body-color: var(--sys-text);
+    --bs-body-bg: var(--sys-bg);
+    --bs-border-color: var(--sys-border);
+    --bs-secondary-color: var(--sys-muted);
+}
+
+    .system-shell a {
+        color: var(--sys-accent);
+    }
+
+    .system-shell h1, .system-shell h2, .system-shell h3 {
+        font-family: var(--sys-heading-font);
+    }
+
+    .system-shell .btn-primary {
+        color: var(--sys-accent-text);
+        background-color: var(--sys-accent);
+        border-color: var(--sys-accent);
+    }
+
+.system-sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: 260px;
+    flex-shrink: 0;
+    height: 100vh;
+    padding: 1.25rem 0.9rem;
+    background: var(--sys-surface);
+    border-right: 1px solid var(--sys-border);
+}
+
+    .system-shell .system-sidebar .system-back {
+        font-size: 0.85rem;
+        color: var(--sys-muted);
+        text-decoration: none;
+        padding: 0.25rem 0.6rem;
+    }
+
+        .system-shell .system-sidebar .system-back:hover {
+            color: var(--sys-text);
+        }
+
+    .system-shell .system-sidebar .system-title {
+        display: block;
+        margin: 0.75rem 0 1rem;
+        padding: 0.25rem 0.6rem;
+        font-family: var(--sys-heading-font);
+        font-size: 1.25rem;
+        font-weight: 600;
+        line-height: 1.25;
+        color: var(--sys-text);
+        text-decoration: none;
+        border-left: 3px solid var(--sys-accent);
+    }
+
+.tool-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    overflow-y: auto;
+}
+
+.system-shell .tool-link {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.6rem;
+    border-radius: 8px;
+    color: var(--sys-text);
+    text-decoration: none;
+}
+
+    .system-shell .tool-link:hover {
+        background: color-mix(in srgb, var(--sys-accent) 12%, transparent);
+    }
+
+    .system-shell .tool-link.active {
+        background: var(--sys-accent);
+        color: var(--sys-accent-text);
+    }
+
+.tool-icon {
+    width: 1.5rem;
+    text-align: center;
+}
+
+.system-main {
+    flex: 1;
+    min-width: 0;
+    padding: 2rem clamp(1rem, 4vw, 3rem);
+}
+
+.system-header {
+    margin-bottom: 1.75rem;
+}
+
+    .system-header h1 {
+        font-size: 2rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .system-header p {
+        color: var(--sys-muted);
+        margin: 0;
+    }
+
+.tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+    gap: 1rem;
+}
+
+.system-shell .tool-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1.2rem;
+    color: var(--sys-text);
+    text-decoration: none;
+    background: var(--sys-surface);
+    border: 1px solid var(--sys-border);
+    border-radius: var(--app-radius);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+    .system-shell .tool-card:hover {
+        border-color: var(--sys-accent);
+        transform: translateY(-2px);
+    }
+
+.tool-card-icon {
+    font-size: 1.6rem;
+}
+
+.tool-card-name {
+    font-family: var(--sys-heading-font);
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.tool-card-description, .system-empty {
+    color: var(--sys-muted);
+    font-size: 0.92rem;
+}
+
+.tool-placeholder {
+    padding: 2rem;
+    background: var(--sys-surface);
+    border: 1px dashed var(--sys-border);
+    border-radius: var(--app-radius);
+}
+
+.tool-placeholder-note {
+    margin: 0;
+    color: var(--sys-muted);
+    font-style: italic;
+}
+
+/* On small screens the side menu becomes a bar above the content. */
+@media (max-width: 767.98px) {
+    .system-shell {
+        flex-direction: column;
+    }
+
+    .system-sidebar {
+        position: static;
+        width: auto;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--sys-border);
+    }
+
+    .tool-nav {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+
+    .system-shell .tool-link {
+        white-space: nowrap;
+    }
+
+    .user-menu-sidebar {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        margin: 0;
+    }
+
+        .user-menu-sidebar .user-menu-name {
+            display: none;
+        }
+
+        .user-menu-sidebar .user-menu-panel {
+            left: auto;
+            right: 0;
+            bottom: auto;
+            top: calc(100% + 0.4rem);
+        }
+}
+
+/* ---------- Blazor error UI ---------- */
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+    color: #111;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
 
 .blazor-error-boundary {
     background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;

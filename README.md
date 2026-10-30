@@ -18,6 +18,23 @@ change their password and enable two-factor authentication or passkeys under the
 The Web API is not exposed outside Docker. The frontend calls it with a short-lived token
 signed with `API_SIGNING_KEY`, and the API rejects any request without a valid one.
 
+## Game systems and tools
+
+After signing in you pick a game system; its tools are listed in a side menu. A tool can
+belong to several systems and receives the system it was opened from, so it can adapt
+(e.g. name lists per setting). Everything is registered in
+`src/DungeonMasterDashboard.Web/GameSystems/GameSystemCatalog.cs`.
+
+- **Add a game system:** copy a file in `GameSystems/Systems/`, give it a new id, name,
+  tagline and theme colors, and add its `Definition` to the `systems` list in the catalog.
+- **Add a tool:** create a component in `Components/Tools/` that `@inherits ToolBase`
+  (the current system is in `System`) and declares a static `Definition` with an id, name,
+  description, icon and `AvailableIn` (`ToolAvailability.AllSystems` or
+  `ToolAvailability.Only(...)`). Add the `Definition` to the `tools` list in the catalog.
+  It appears at `/systems/{system}/{tool}`.
+
+The catalog checks on startup that tool ids are unique and only refer to existing systems.
+
 ## Running with Docker
 
 1. Create `.env` with a freshly generated API signing key:

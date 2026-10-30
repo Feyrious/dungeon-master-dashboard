@@ -1,0 +1,14 @@
+@using DungeonMasterDashboard.Web.GameSystems.Systems
+@inherits ToolBase
+
+<ToolPlaceholder>Build encounters and balance them against your party.</ToolPlaceholder>
+
+@code {
+    public static ToolDefinition Definition { get; } = new(
+        Id: "encounters",
+        Name: "Encounter Builder",
+        Description: "Plan combat encounters and check their difficulty.",
+        Icon: "⚔️",
+        Component: typeof(EncounterBuilder),
+        AvailableIn: ToolAvailability.Only(DungeonsAndDragons5e.Id));
+}
