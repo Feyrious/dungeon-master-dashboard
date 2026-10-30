@@ -32,8 +32,10 @@ internal static class GameSystemSettingsEndpoints
             .Select(i => new { i.SystemId, i.UpdatedAt })
             .ToDictionaryAsync(i => i.SystemId, i => i.UpdatedAt, cancellationToken);
 
+        // TryGetValue rather than GetValueOrDefault: a missing image must stay null, not become 0001-01-01.
         var ids = settings.Keys.Union(images.Keys).Order();
-        return TypedResults.Ok(ids.Select(id => ToDto(id, settings.GetValueOrDefault(id), images.GetValueOrDefault(id))).ToList());
+        return TypedResults.Ok(ids.Select(id => ToDto(
+            id, settings.GetValueOrDefault(id), images.TryGetValue(id, out var updatedAt) ? updatedAt : null)).ToList());
     }
 
     private static async Task<IResult> GetAsync(string systemId, DashboardDbContext db, CancellationToken cancellationToken)
