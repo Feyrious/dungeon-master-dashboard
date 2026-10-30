@@ -1,0 +1,37 @@
+@page "/"
+@using DungeonMasterDashboard.Web.Api
+@inject ApiClient Api
+
+<PageTitle>Dungeon Master Dashboard</PageTitle>
+
+<h1>Dungeon Master Dashboard</h1>
+
+<AuthorizeView>
+    <p>Signed in as <strong>@context.User.Identity?.Name</strong>.</p>
+</AuthorizeView>
+
+@if (apiUser is not null)
+{
+    <p class="text-success">Web API connection OK (authenticated as @apiUser.Name).</p>
+}
+else if (apiError is not null)
+{
+    <p class="text-danger">Web API unavailable: @apiError</p>
+}
+
+@code {
+    private CurrentUserResponse? apiUser;
+    private string? apiError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            apiUser = await Api.GetCurrentUserAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            apiError = ex.Message;
+        }
+    }
+}

@@ -11,6 +11,9 @@
 **/*.suo
 **/.env
 **/.env.*
+**/*.env
+**/*.env.example
+**/*.db
 **/secrets.json
 **/docker-compose*
 **/compose*

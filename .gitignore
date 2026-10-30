@@ -489,6 +489,7 @@ $RECYCLE.BIN/
 .env
 .env.*
 !.env.example
+users.env
 *.env.local
 secrets.json
 appsettings.*.local.json
