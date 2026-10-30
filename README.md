@@ -40,11 +40,22 @@ belong to several systems and receives the system it was opened from, so it can 
 
 The catalog checks on startup that ids are unique and only refer to existing systems.
 
+### Editing a game system
+
+The pencil in the top-right corner of a game system tile opens its settings: name and
+tagline, tile image (upload, then drag and zoom to fit the tile), theme colors and fonts
+(with contrast warnings), which tools show in its side menu, and whether it's shown on the
+overview. Only values that differ from the defaults in code are saved, in the Web API's
+database (`api-data` volume); "Reset to defaults" removes them again.
+
+### Tile images
+
 Each world and game system tile has an original illustration in
 `src/DungeonMasterDashboard.Web/wwwroot/img/tiles/{id}.svg` (add one for a new tile). To use
 your own image instead, e.g. cover art from a book you own, drop it into `tile-images/` named
 after the tile's id (see `tile-images/README.md`). Those images are git-ignored and only
-served to signed-in users.
+served to signed-in users. An image uploaded in a game system's settings takes precedence
+over both.
 
 ## Running with Docker
 
@@ -76,7 +87,8 @@ The site listens on `127.0.0.1:8080`. Point your Cloudflare Tunnel's public host
 `docker compose --profile tunnel up -d` to run cloudflared as a container
 (public hostname service: `http://web:8080`).
 
-The database and login encryption keys live in the `web-data` volume.
+Accounts and login encryption keys live in the `web-data` volume; game system settings
+and uploaded images in the `api-data` volume.
 
 ## Running locally
 

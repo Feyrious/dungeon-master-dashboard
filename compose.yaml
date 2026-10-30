@@ -36,6 +36,9 @@ services:
     restart: unless-stopped
     environment:
       Auth__ApiToken__SigningKey: ${API_SIGNING_KEY:?Set API_SIGNING_KEY in .env}
+      ConnectionStrings__DefaultConnection: "DataSource=/app/data/dashboard.db"
+    volumes:
+      - api-data:/app/data
     # No published ports: only the web container can reach the API.
 
   # Optional: run the Cloudflare Tunnel connector here instead of on the host.
@@ -54,3 +57,4 @@ services:
 
 volumes:
   web-data:
+  api-data:

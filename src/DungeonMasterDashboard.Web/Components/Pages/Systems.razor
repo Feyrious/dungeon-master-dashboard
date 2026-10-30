@@ -1,5 +1,7 @@
 @page "/systems"
+@rendermode InteractiveServer
 @inject GameSystemCatalog Catalog
+@inject ConfiguredGameSystems GameSystems
 @inject IConfiguration Configuration
 @inject TileImages TileImages
 
@@ -16,25 +18,17 @@
                 @foreach (var world in Catalog.Worlds)
                 {
                     var url = Configuration[$"Worlds:{world.Id}:Url"];
-                    var systemName = Catalog.FindSystem(world.SystemId)?.Name;
-                    @if (string.IsNullOrWhiteSpace(url))
-                    {
-                        <div class="@TileClass(world.Theme, "system-tile-disabled")" style="@TileStyle(world.Theme, world.Id)">
-                            <span class="system-tile-label">@systemName</span>
-                            <span class="system-tile-name">@world.Name</span>
-                            <span class="system-tile-tagline">@world.Tagline</span>
-                            <span class="system-tile-meta">Link not set yet</span>
-                        </div>
-                    }
-                    else
-                    {
-                        <a class="@TileClass(world.Theme)" href="@url" target="_blank" rel="noopener noreferrer" style="@TileStyle(world.Theme, world.Id)">
-                            <span class="system-tile-label">@systemName</span>
-                            <span class="system-tile-name">@world.Name</span>
-                            <span class="system-tile-tagline">@world.Tagline</span>
-                            <span class="system-tile-meta">Open journals ↗</span>
-                        </a>
-                    }
+                    var linked = !string.IsNullOrWhiteSpace(url);
+                    <SystemTile Theme="world.Theme"
+                                Name="@world.Name"
+                                Tagline="@world.Tagline"
+                                Label="@SystemName(world.SystemId)"
+                                Meta="@(linked ? "Open journals ↗" : "Link not set yet")"
+                                ImageUrl="@TileImages.UrlFor(world.Id)"
+                                Href="@(linked ? url : null)"
+                                Class="@(linked ? null : "system-tile-disabled")"
+                                target="@(linked ? "_blank" : null)"
+                                rel="@(linked ? "noopener noreferrer" : null)" />
                 }
             </div>
         </section>
@@ -43,23 +37,57 @@
     <section class="overview-section" aria-labelledby="tools-heading">
         <h2 id="tools-heading">Tools</h2>
         <div class="system-grid">
-            @foreach (var system in Catalog.Systems)
+            @foreach (var system in systems.Where(s => !s.IsHidden))
             {
-                var toolCount = Catalog.ToolsFor(system).Count;
-                <a class="@TileClass(system.Theme)" href="systems/@system.Id" style="@TileStyle(system.Theme, system.Id)">
-                    <span class="system-tile-name">@system.Name</span>
-                    <span class="system-tile-tagline">@system.Tagline</span>
-                    <span class="system-tile-meta">@toolCount @(toolCount == 1 ? "tool" : "tools")</span>
-                </a>
+                @EditableTile(system)
             }
         </div>
+
+        @if (systems.Any(s => s.IsHidden))
+        {
+            <details class="hidden-systems">
+                <summary>Hidden game systems (@systems.Count(s => s.IsHidden))</summary>
+                <div class="system-grid">
+                    @foreach (var system in systems.Where(s => s.IsHidden))
+                    {
+                        @EditableTile(system)
+                    }
+                </div>
+            </details>
+        }
     </section>
 </div>
 
-@code {
-    private static string TileClass(GameSystemTheme theme, string? extra = null) =>
-        string.Join(' ', new[] { "system-tile", theme.IsDark ? null : "system-tile-light", extra }.Where(c => c is not null));
+@if (editing is not null)
+{
+    <SystemSettingsDialog @key="editing.Defaults.Id" Config="editing" OnClose="() => editing = null" OnChanged="ReloadAsync" />
+}
 
-    private string TileStyle(GameSystemTheme theme, string tileId) =>
-        $"{theme.ToCssVariables()}--tile-image:url('{TileImages.UrlFor(tileId)}');";
+@code {
+    private IReadOnlyList<ConfiguredSystem> systems = [];
+    private ConfiguredSystem? editing;
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync() => systems = await GameSystems.GetAllAsync();
+
+    private string? SystemName(string systemId) =>
+        systems.FirstOrDefault(s => s.System.Id == systemId)?.System.Name ?? Catalog.FindSystem(systemId)?.Name;
+
+    // The edit button sits beside the tile's link rather than inside it, so it doesn't open the system.
+    private RenderFragment EditableTile(ConfiguredSystem config) =>
+        @<div class="system-tile-wrapper">
+            <SystemTile Theme="config.System.Theme"
+                        Name="@config.System.Name"
+                        Tagline="@config.System.Tagline"
+                        Meta="@($"{config.Tools.Count} {(config.Tools.Count == 1 ? "tool" : "tools")}")"
+                        ImageUrl="@config.ImageUrl"
+                        Href="@($"systems/{config.System.Id}")" />
+            <button type="button" class="system-tile-edit" title="Edit @config.System.Name" aria-label="Edit @config.System.Name"
+                    style="@config.System.Theme.ToCssVariables()" @onclick="() => editing = config">
+                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
+                    <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325" />
+                </svg>
+            </button>
+        </div>;
 }

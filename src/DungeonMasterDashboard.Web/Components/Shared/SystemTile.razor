@@ -1,0 +1,70 @@
+@using Microsoft.AspNetCore.Components.Rendering
+@* A world or game system tile shown in its own theme. Used on the overview and as the live
+   preview on the edit page. The image is a separate layer so the cropper can preview a new
+   image on it directly. *@
+
+@if (Href is null)
+{
+    <div class="@CssClass" style="@Style" @attributes="AdditionalAttributes">
+        @{ RenderContent(__builder); }
+    </div>
+}
+else
+{
+    <a class="@CssClass" href="@Href" style="@Style" @attributes="AdditionalAttributes">
+        @{ RenderContent(__builder); }
+    </a>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public GameSystemTheme Theme { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string Name { get; set; } = "";
+
+    [Parameter]
+    public string? Tagline { get; set; }
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public string? Meta { get; set; }
+
+    [Parameter]
+    public string? ImageUrl { get; set; }
+
+    [Parameter]
+    public string? Href { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass => string.Join(' ', new[] { "system-tile", Theme.IsDark ? null : "system-tile-light", Class }.Where(c => c is not null));
+
+    private string Style => ImageUrl is null
+        ? Theme.ToCssVariables()
+        : $"{Theme.ToCssVariables()}--tile-image:url('{ImageUrl}');";
+
+    private void RenderContent(RenderTreeBuilder __builder)
+    {
+        <span class="system-tile-image" aria-hidden="true"></span>
+        @if (Label is not null)
+        {
+            <span class="system-tile-label">@Label</span>
+        }
+        <span class="system-tile-name">@Name</span>
+        @if (!string.IsNullOrEmpty(Tagline))
+        {
+            <span class="system-tile-tagline">@Tagline</span>
+        }
+        @if (Meta is not null)
+        {
+            <span class="system-tile-meta">@Meta</span>
+        }
+    }
+}

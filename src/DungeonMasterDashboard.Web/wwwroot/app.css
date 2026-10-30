@@ -23,17 +23,21 @@ a, .btn-link {
     color: var(--app-accent);
 }
 
+/* Bootstrap colors buttons through variables (including the disabled state), so set those. */
 .btn-primary {
-    color: var(--app-accent-text);
-    background-color: var(--app-accent);
-    border-color: var(--app-accent);
+    --bs-btn-color: var(--app-accent-text);
+    --bs-btn-bg: var(--app-accent);
+    --bs-btn-border-color: var(--app-accent);
+    --bs-btn-hover-color: var(--app-accent-text);
+    --bs-btn-hover-bg: #e0b464;
+    --bs-btn-hover-border-color: #e0b464;
+    --bs-btn-active-color: var(--app-accent-text);
+    --bs-btn-active-bg: #e0b464;
+    --bs-btn-active-border-color: #e0b464;
+    --bs-btn-disabled-color: var(--app-accent-text);
+    --bs-btn-disabled-bg: var(--app-accent);
+    --bs-btn-disabled-border-color: var(--app-accent);
 }
-
-    .btn-primary:hover, .btn-primary:focus {
-        color: var(--app-accent-text);
-        background-color: #e0b464;
-        border-color: #e0b464;
-    }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
     box-shadow: 0 0 0 0.1rem var(--app-bg), 0 0 0 0.25rem var(--app-accent);
@@ -144,9 +148,11 @@ h1:focus {
 }
 
 /* Each tile previews its theme: the image fills the tile and fades into the theme's
-   background color towards the bottom, where the text sits. */
+   background color towards the bottom, where the text sits. The image is its own layer
+   (.system-tile-image) so the editor can preview a new crop on it. */
 .system-tile {
     position: relative;
+    isolation: isolate;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -157,20 +163,32 @@ h1:focus {
     color: var(--sys-text);
     text-decoration: none;
     background-color: var(--sys-bg);
-    background-image:
-        linear-gradient(to bottom,
-            transparent 0%,
-            color-mix(in srgb, var(--sys-bg) 35%, transparent) 35%,
-            color-mix(in srgb, var(--sys-bg) 88%, transparent) 62%,
-            var(--sys-bg) 100%),
-        var(--tile-image, none);
-    background-size: cover;
-    background-position: center top;
     border: 1px solid var(--sys-border);
     border-top: 4px solid var(--sys-accent);
     border-radius: var(--app-radius);
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+    .system-tile::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: linear-gradient(to bottom,
+            transparent 0%,
+            color-mix(in srgb, var(--sys-bg) 35%, transparent) 35%,
+            color-mix(in srgb, var(--sys-bg) 88%, transparent) 62%,
+            var(--sys-bg) 100%);
+    }
+
+.system-tile-image {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-image: var(--tile-image, none);
+    background-size: cover;
+    background-position: center top;
 }
 
     .system-tile.system-tile-light {
@@ -230,6 +248,318 @@ h1:focus {
     text-transform: uppercase;
     /* Plain accent colors are too dark/light for small text on some themes. */
     color: color-mix(in srgb, var(--sys-accent) 60%, var(--sys-text));
+}
+
+/* Edit button in the top-right corner of a game system tile. It sits beside the tile's
+   link (not inside it) so clicking it doesn't open the system. */
+.system-tile-wrapper {
+    position: relative;
+    display: flex;
+}
+
+    .system-tile-wrapper > .system-tile {
+        flex: 1;
+    }
+
+.system-tile-edit {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: grid;
+    place-items: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    padding: 0;
+    color: var(--sys-text);
+    background: color-mix(in srgb, var(--sys-bg) 70%, transparent);
+    border: 1px solid color-mix(in srgb, var(--sys-text) 25%, transparent);
+    border-radius: 50%;
+    backdrop-filter: blur(4px);
+    opacity: 0.8;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+    .system-tile-edit:hover, .system-tile-edit:focus-visible {
+        opacity: 1;
+        color: var(--sys-accent-text);
+        background: var(--sys-accent);
+        border-color: var(--sys-accent);
+    }
+
+    .system-tile-edit:focus-visible {
+        outline: 2px solid var(--sys-accent);
+        outline-offset: 2px;
+    }
+
+.hidden-systems {
+    margin-top: 1.5rem;
+}
+
+    .hidden-systems summary {
+        margin-bottom: 1rem;
+        color: var(--app-muted);
+        cursor: pointer;
+    }
+
+    .hidden-systems .system-tile {
+        opacity: 0.7;
+    }
+
+/* ---------- Game system settings dialog ---------- */
+
+body:has(.settings-dialog) {
+    overflow: hidden;
+}
+
+.settings-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.settings-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    width: min(980px, calc(100vw - 2rem));
+    max-height: calc(100vh - 2rem);
+    margin: auto;
+    height: fit-content;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+    outline: none;
+}
+
+.settings-dialog-header, .settings-dialog-footer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+}
+
+.settings-dialog-header {
+    justify-content: space-between;
+    border-bottom: 1px solid var(--app-border);
+}
+
+    .settings-dialog-header h2 {
+        margin: 0;
+        font-size: 1.3rem;
+    }
+
+.settings-close {
+    width: 2.2rem;
+    height: 2.2rem;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--app-muted);
+    background: none;
+    border: 0;
+    border-radius: 6px;
+}
+
+    .settings-close:hover {
+        color: var(--app-text);
+        background: var(--app-surface-raised);
+    }
+
+.settings-dialog-form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.settings-dialog-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    overflow-y: auto;
+}
+
+.settings-section + .settings-section {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--app-border);
+}
+
+.settings-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--app-accent);
+    margin-bottom: 0.9rem;
+}
+
+.settings-dialog .form-text {
+    color: var(--app-muted);
+}
+
+.settings-image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.cropper {
+    margin-top: 0.75rem;
+}
+
+/* Same 3:2 shape as the exported image and roughly the tiles. */
+.cropper-frame {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+    .cropper-frame:active {
+        cursor: grabbing;
+    }
+
+    .cropper-frame img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        max-width: none;
+        transform-origin: 0 0;
+        pointer-events: none;
+    }
+
+    /* Shows where the tile text will sit. */
+    .cropper-frame::after {
+        content: "";
+        position: absolute;
+        inset: 55% 0 0 0;
+        background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.55));
+        pointer-events: none;
+    }
+
+.cropper-zoom {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.75rem 0 0.25rem;
+}
+
+.settings-colors {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.5rem;
+}
+
+.settings-color {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    background: var(--app-surface-raised);
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+    .settings-color input[type="color"] {
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        background: none;
+        border: 0;
+        cursor: pointer;
+    }
+
+.settings-preview {
+    position: sticky;
+    top: 0;
+    align-self: start;
+}
+
+.settings-preview-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--app-muted);
+}
+
+.settings-preview .system-tile {
+    min-height: 220px;
+}
+
+.settings-contrast {
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.85rem;
+}
+
+    .settings-contrast li {
+        padding: 0.2rem 0;
+    }
+
+    .settings-contrast .ok {
+        color: var(--app-muted);
+    }
+
+    .settings-contrast .low {
+        color: #ffb35c;
+    }
+
+.settings-contrast-ratio {
+    opacity: 0.8;
+}
+
+.settings-dialog-footer {
+    flex-wrap: wrap;
+    border-top: 1px solid var(--app-border);
+}
+
+.settings-reset {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: auto;
+    font-size: 0.9rem;
+}
+
+.settings-footer-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+@media (max-width: 767.98px) {
+    .settings-dialog {
+        width: 100vw;
+        max-height: 100vh;
+        height: 100vh;
+        border-radius: 0;
+    }
+
+    .settings-dialog-body {
+        grid-template-columns: 1fr;
+    }
+
+    /* Preview first, so changes are visible while scrolling the form. */
+    .settings-preview {
+        position: static;
+        order: -1;
+    }
 }
 
 .back-link {
@@ -370,9 +700,18 @@ h1:focus {
     }
 
     .system-shell .btn-primary {
-        color: var(--sys-accent-text);
-        background-color: var(--sys-accent);
-        border-color: var(--sys-accent);
+        --bs-btn-color: var(--sys-accent-text);
+        --bs-btn-bg: var(--sys-accent);
+        --bs-btn-border-color: var(--sys-accent);
+        --bs-btn-hover-color: var(--sys-accent-text);
+        --bs-btn-hover-bg: color-mix(in srgb, var(--sys-accent) 85%, white);
+        --bs-btn-hover-border-color: var(--sys-accent);
+        --bs-btn-active-color: var(--sys-accent-text);
+        --bs-btn-active-bg: var(--sys-accent);
+        --bs-btn-active-border-color: var(--sys-accent);
+        --bs-btn-disabled-color: var(--sys-accent-text);
+        --bs-btn-disabled-bg: var(--sys-accent);
+        --bs-btn-disabled-border-color: var(--sys-accent);
     }
 
 .system-sidebar {
