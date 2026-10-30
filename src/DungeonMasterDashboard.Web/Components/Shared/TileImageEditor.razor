@@ -183,6 +183,8 @@
     private async Task SetCroppingAsync(bool value)
     {
         cropping = value;
+        // Also called from script callbacks, where nothing re-renders this component otherwise.
+        StateHasChanged();
         await CroppingChanged.InvokeAsync(value);
     }
 
