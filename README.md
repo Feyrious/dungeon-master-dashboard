@@ -1,5 +1,7 @@
 # Dungeon Master Dashboard
 
+[![CI](https://github.com/Feyrious/dungeon-master-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Feyrious/dungeon-master-dashboard/actions/workflows/ci.yml)
+
 A web dashboard for dungeon masters.
 
 ## Stack
